@@ -9,6 +9,12 @@ export type DiskInfo = {
   percentageUsed: number;
   removable: boolean;
 };
+export type AppInfo = {
+ name: string;
+ version: string;
+ platform: string;
+ destructiveCommandsAvailable: boolean;
+};
 
 export type AppSettings = {
  schemaVersion: number;

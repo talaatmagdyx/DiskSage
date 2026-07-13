@@ -2,6 +2,8 @@
 
 DiskSage is a local-first macOS and Linux desktop application for understanding disk usage and reviewing safe cleanup recommendations. Safety takes precedence over maximum cleanup.
 
+![DiskSage storage overview](docs/screenshots/overview.png)
+
 This repository currently implements Phase 0 through Phase 7's product-polish and diagnostics workflow:
 
 - Tauri 2 + Rust desktop foundation
@@ -40,6 +42,12 @@ This repository currently implements Phase 0 through Phase 7's product-polish an
 - Backend-generated diagnostics exports containing only aggregates, error codes, and redacted configuration
 
 Permanent deletion is intentionally disabled by default. When explicitly enabled, it remains limited to backend-authorized findings, requires an immutable plan plus native confirmation, and revalidates immediately before a single no-retry deletion attempt. Protected paths remain blocked.
+
+## Install
+
+Release artifacts are produced for macOS Apple silicon, macOS Intel, Linux AppImage, and Debian-based Linux. See [installation instructions](INSTALL.md). Public macOS artifacts must pass the signing, notarization, stapling, and clean-machine gates before a draft release is published.
+
+![DiskSage local-first onboarding](docs/screenshots/onboarding.png)
 
 ## Development
 
@@ -80,5 +88,11 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev
 - [Threat model](docs/threat-model.md)
 - [IPC contracts](docs/ipc-contracts.md)
 - [Test strategy](docs/test-strategy.md)
+- [Privacy policy](PRIVACY.md)
+- [Security policy](SECURITY.md)
+- [Release checklist](docs/release-checklist.md)
+- [Release notes](CHANGELOG.md)
+- [Version 1 limitations](docs/limitations.md)
+- [Release workflow](docs/releasing.md)
 
 All filesystem data stays local. Logs must not include file contents and should avoid complete sensitive paths.

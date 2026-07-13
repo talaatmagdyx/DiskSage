@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AppInfo,
   AppSettings,
   CleanupPlan,
   CleanupSummary,
@@ -17,13 +18,23 @@ import type {
   ScanSummary,
 } from "./types";
 
+const releasePreviewMode = import.meta.env.DEV ? new URLSearchParams(window.location.search).get("release-preview") : null;
+const invokeCommand = async <T>(command: string, args?: Record<string, unknown>) => {
+  if (releasePreviewMode) {
+    const { previewInvoke } = await import("./releasePreview");
+    return previewInvoke<T>(command, args);
+  }
+  return invoke<T>(command, args);
+};
+
 export const commands = {
- exportDiagnostics: () => invoke<DiagnosticsExport>("export_diagnostics"),
-  listDisks: () => invoke<DiskInfo[]>("list_disks"),
-  getSettings: () => invoke<AppSettings>("get_settings"),
+  getAppInfo: () => invokeCommand<AppInfo>("get_app_info"),
+  exportDiagnostics: () => invokeCommand<DiagnosticsExport>("export_diagnostics"),
+  listDisks: () => invokeCommand<DiskInfo[]>("list_disks"),
+  getSettings: () => invokeCommand<AppSettings>("get_settings"),
   updateSettings: (settings: AppSettings) =>
-    invoke<AppSettings>("update_settings", { request: { settings } }),
-  getScanProfiles: () => invoke<ScanProfile[]>("get_scan_profiles"),
+    invokeCommand<AppSettings>("update_settings", { request: { settings } }),
+  getScanProfiles: () => invokeCommand<ScanProfile[]>("get_scan_profiles"),
   startScan: (profile: ScanProfileId, excludedPaths: string[] = [], custom?: CustomScanOptions) =>
     invoke<{ scanId: string }>("start_scan", { request: { profile, excludedPaths, custom } }),
   cancelScan: (scanId: string) => invoke<void>("cancel_scan", { request: { scanId } }),

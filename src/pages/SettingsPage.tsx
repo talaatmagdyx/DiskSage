@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, LoaderCircle, Palette, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Download, Info, LoaderCircle, Palette, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import type { AppSettings } from "../ipc/types";
+import type { AppInfo, AppSettings } from "../ipc/types";
 import { useSettingsStore } from "../stores/settingsStore";
 import { commands } from "../ipc/commands";
 import { normalizeCommandError } from "../ipc/errors";
@@ -12,9 +12,11 @@ export function SettingsPage() {
   const { settings, status, error, load, save } = useSettingsStore();
   const [draft, setDraft] = useState<AppSettings | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setDraft(settings); }, [settings]);
+  useEffect(() => { void commands.getAppInfo().then(setAppInfo).catch(() => undefined); }, []);
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
@@ -119,6 +121,11 @@ export function SettingsPage() {
               <Toggle checked={draft.permanentDeletionEnabled} onChange={(value) => update("permanentDeletionEnabled", value)} label="Enable permanent deletion" />
             </div>
             {draft.permanentDeletionEnabled && <p className="mt-3 rounded-xl border border-red-400/25 bg-red-400/10 p-3 text-xs leading-5 text-red-100" role="status">Warning: a separate permanent-delete action will appear for cleanup-authorized findings. Expert-risk plans additionally require an exact typed phrase. No item is deleted when this setting is enabled.</p>}
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-start gap-3"><Info className="mt-0.5 text-sage-300" size={19} aria-hidden="true" /><div><h2 className="font-semibold">About DiskSage</h2><p className="mt-1 text-sm text-muted">Local-first disk analysis and safety-focused cleanup.</p></div></div>
+            <dl className="mt-5 grid grid-cols-3 gap-3 text-sm"><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Version</dt><dd className="mt-1 font-mono">{appInfo?.version ?? "Loading…"}</dd></div><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Platform</dt><dd className="mt-1 capitalize">{appInfo?.platform ?? "Loading…"}</dd></div><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Privacy</dt><dd className="mt-1">Local by design</dd></div></dl>
           </Card>
 
           {error && <p className="text-sm text-amber-100" role="alert">{error.message}</p>}

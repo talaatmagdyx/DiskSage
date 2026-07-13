@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release:check": "node scripts/check-release.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.5",
