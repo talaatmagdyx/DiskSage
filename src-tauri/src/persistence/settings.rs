@@ -76,7 +76,7 @@ impl SettingsRepository {
             ErrorCode::FilesystemError
         };
         CommandError::new(code, "Local settings could not be accessed.", true)
-            .with_details(format!("{}: {}", operation, error))
+            .with_details(format!("{operation}: {error}"))
     }
 }
 

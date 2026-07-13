@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrorCode {
     InvalidPath,
@@ -22,7 +22,7 @@ pub enum ErrorCode {
     InternalError,
 }
 
-#[derive(Debug, Clone, Serialize, thiserror::Error)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize, thiserror::Error)]
 #[serde(rename_all = "camelCase")]
 #[error("{message}")]
 pub struct CommandError {

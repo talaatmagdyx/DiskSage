@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Database, HardDrive, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { formatBytes } from "../lib/utils";
@@ -104,10 +105,11 @@ export function DashboardPage() {
                 <span className="inline-flex items-center gap-2 rounded-full bg-sage-400/10 px-3 py-1 text-xs font-semibold text-sage-100">
                   <ShieldCheck aria-hidden="true" size={14} /> Foundation ready
                 </span>
-                <h2 className="mt-5 text-xl font-semibold">Safe before fast.</h2>
+                <h2 className="mt-5 text-xl font-semibold">Targeted scans are ready.</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Scanning and cleanup remain intentionally unavailable until the bounded scanner and immutable plan workflow are implemented.
+                  Quick and Developer scans inspect ten backend-owned cache rules with cancellation, progress, and local findings persistence.
                 </p>
+                <Link to="/scan" className="mt-5 inline-flex rounded-xl bg-sage-400 px-4 py-2.5 text-sm font-semibold text-sage-900">Choose a scan</Link>
               </div>
               <div className="mt-6 flex items-center gap-2 text-xs text-muted">
                 <LockKeyhole aria-hidden="true" size={14} /> Destructive commands are not registered.

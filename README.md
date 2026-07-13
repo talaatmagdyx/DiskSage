@@ -2,7 +2,7 @@
 
 DiskSage is a local-first macOS and Linux desktop application for understanding disk usage and, in later phases, reviewing safe cleanup recommendations. Safety takes precedence over maximum cleanup.
 
-This repository currently implements Phase 0 and Phase 1 only:
+This repository currently implements Phase 0 through Phase 2's targeted scanner:
 
 - Tauri 2 + Rust desktop foundation
 - React 18, TypeScript, Vite, TailwindCSS, shadcn-compatible component setup, routing, and Zustand
@@ -12,8 +12,13 @@ This repository currently implements Phase 0 and Phase 1 only:
 - Versioned domain contracts for rules, findings, scans, and immutable cleanup plans
 - Protected-path policy and its first mandatory safety tests
 - Least-privilege Tauri capability and strict Content Security Policy
+- Single-heavy-scan coordinator with cancellation tokens and throttled progress events
+- Bounded, symlink-safe, same-filesystem traversal with exclusions and partial-error reporting
+- Ten versioned safe cache rules for package managers and browsers
+- Incremental flat findings persisted as local NDJSON with paginated IPC reads
+- Scan and Findings pages with live progress, cancellation, filtering, and backend-authorized reveal
 
-There is intentionally no scanner, trash operation, permanent deletion, shell command, or cleanup IPC command in this phase.
+There is intentionally no trash operation, permanent deletion, cleanup executor, or cleanup IPC command in this phase.
 
 ## Development
 

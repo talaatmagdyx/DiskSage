@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "../../lib/utils";
+import { useScanEvents } from "../../hooks/useScanEvents";
 
 const links = [
   { to: "/", label: "Overview", icon: CircleGauge, end: true },
@@ -19,6 +20,7 @@ const links = [
 ];
 
 export function AppShell() {
+  useScanEvents();
   return (
     <div className="grid min-h-full grid-cols-[230px_1fr]">
       <aside className="flex h-screen flex-col border-r border-line bg-[#07100e]/90 px-4 py-5">
@@ -77,4 +79,3 @@ export function AppShell() {
     </div>
   );
 }
-
