@@ -132,3 +132,67 @@ export type Finding = {
   cleanupAllowed: boolean;
   cleanupBlockReason?: string;
 };
+
+export type CleanupAction = "moveToTrash" | "permanentDelete";
+
+export type CleanupPlanItem = {
+  scanId: string;
+  findingId: string;
+  ruleId: string;
+  ruleVersion: number;
+  path: string;
+  canonicalPath: string;
+  expectedType: "file" | "directory" | "symlink";
+  expectedSize: number;
+  expectedModifiedAt?: string;
+  risk: "safe" | "careful" | "expert";
+  validationToken: string;
+};
+
+export type CleanupPlan = {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  action: CleanupAction;
+  items: CleanupPlanItem[];
+  expectedReclaimableBytes: number;
+  riskSummary: { safe: number; careful: number; expert: number };
+  confirmationToken: string;
+};
+
+export type CleanupItemResult = {
+  findingId: string;
+  ruleId: string;
+  displayPath: string;
+  expectedBytes: number;
+  status: "movedToTrash" | "skipped" | "failed";
+  error?: CommandError;
+};
+
+export type CleanupProgress = {
+  operationId: string;
+  totalItems: number;
+  completedItems: number;
+  successCount: number;
+  failureCount: number;
+  skippedCount: number;
+  processedBytes: number;
+  currentPath?: string;
+};
+
+export type CleanupSummary = {
+  operationId: string;
+  planId: string;
+  startedAt: string;
+  completedAt: string;
+  action: CleanupAction;
+  selectedCount: number;
+  successCount: number;
+  failureCount: number;
+  skippedCount: number;
+  expectedBytes: number;
+  actualFreeSpaceChangeBytes?: number;
+  cancelled: boolean;
+  items: CleanupItemResult[];
+  disks: DiskInfo[];
+};

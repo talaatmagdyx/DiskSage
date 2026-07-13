@@ -10,6 +10,7 @@ type FindingsState = {
   error: CommandError | null;
   reset: (scanId?: string) => void;
   append: (finding: Finding) => void;
+  remove: (findingIds: string[]) => void;
   load: (scanId: string) => Promise<void>;
 };
 
@@ -25,6 +26,10 @@ export const useFindingsStore = create<FindingsState>((set, get) => ({
     if (current.findings.some((item) => item.id === finding.id)) return;
     set({ scanId: finding.scanId, findings: [...current.findings, finding], status: "ready" });
   },
+  remove: (findingIds) => {
+    const removed = new Set(findingIds);
+    set((state) => ({ findings: state.findings.filter((finding) => !removed.has(finding.id)) }));
+  },
   load: async (scanId) => {
     set({ scanId, status: "loading", error: null });
     try {
@@ -35,4 +40,3 @@ export const useFindingsStore = create<FindingsState>((set, get) => ({
     }
   },
 }));
-

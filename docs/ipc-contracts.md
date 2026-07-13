@@ -2,7 +2,7 @@
 
 All request structs use strict deserialization with unknown fields denied. Responses use camel-case JSON. Failures use `CommandError`; frontend presentation maps its code to a user-safe message and does not render `details`.
 
-## Registered in Phase 1
+## Registered through Phase 3
 
 | Command | Request | Response | Side effects |
 | --- | --- | --- | --- |
@@ -17,13 +17,18 @@ All request structs use strict deserialization with unknown fields denied. Respo
 | `get_scan_status` | `{ scanId }` | `ScanSummary` | reads app-owned status |
 | `get_scan_findings` | `{ scanId, offset, limit }` | flat `Finding[]` | pages app-owned NDJSON |
 | `reveal_item` | `{ scanId, findingId }` | none | resolves the path from backend persistence and opens its parent location |
+| `create_cleanup_plan` | `{ scanId, findingIds, action }` | expiring immutable `CleanupPlan` | snapshots exact backend findings; no filesystem mutation |
+| `execute_cleanup_plan` | `{ planId, confirmationToken }` | opaque operation ID | consumes the plan once and starts independent Trash operations |
+| `cancel_cleanup` | `{ operationId }` | none | skips remaining items after the current bounded step |
+| `get_cleanup_history` | `{ offset, limit }` | `CleanupSummary[]` | pages app-owned local history |
+| `clear_cleanup_history` | none | none | removes app-owned local history only |
 
-## Defined but deliberately not registered
+## Deliberately unavailable
 
-Rule, finding, scan progress, cleanup plan, create-plan request, and execute-plan request types define the cross-layer contract for later work. `CleanupPlanItem.validationToken` and `CleanupPlan.confirmationToken` are private Rust fields. They cannot be constructed by frontend deserialization.
+Permanent deletion and expert cleanup have no executable command path. The action enum is retained as a versioned contract, but plan creation rejects every action except `moveToTrash`.
 
-The future `execute_cleanup_plan` request contains only `planId` and `confirmationToken`. There is no path list or boolean `confirmed` shortcut. Current scan IPC accepts exclusions, which can only reduce traversal scope; it never accepts cleanup authorization.
+`execute_cleanup_plan` contains only `planId` and `confirmationToken`. There is no path list or boolean `confirmed` shortcut. Scan exclusions can only reduce traversal scope; they never grant cleanup authorization.
 
 ## Event contract
 
-Every future event includes an operation ID. Scan progress is limited to 4–10 events per second; findings are incremental flat records, not a full filesystem tree. Event names follow the requirements' `scan://*`, `cleanup://*`, and `duplicates://*` namespaces.
+Every scan or cleanup event includes its operation ID. Cleanup emits `started`, `progress`, `item-completed`, `completed`, and `failed`; per-item success is emitted only after the OS Trash operation succeeds.

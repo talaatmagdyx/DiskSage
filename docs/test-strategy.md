@@ -15,6 +15,6 @@ Tests use temporary directories and never inspect or modify the developer's real
 
 Add fixtures for nested trees, permission denial, symlink loops, broken links, sparse files, mutation during scan, Unicode and long paths, hidden files, and large file counts. Prove bounded concurrency, throttled progress, partial results, and cancellation response.
 
-## Mandatory gate before Phase 3
+## Phase 3 safety gate
 
-Demonstrate that the executor cannot delete a filesystem root, home, protected path, item outside a backend plan, expired or reused plan, symlink target, changed item, or every member of a duplicate group. Permanent deletion must remain absent until its separate Phase 6 gate.
+Tests demonstrate that cleanup cannot target a filesystem root, home, protected path, item outside a backend plan, expired or reused plan, symlink target, changed item, parent-symlink redirect, or unsupported duplicate finding. Permanent deletion is rejected before any plan is created. Store tests prove execution does not begin until a backend plan is reviewed and that partial outcomes remain visible.

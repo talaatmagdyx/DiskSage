@@ -1,5 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppSettings, DiskInfo, Finding, ScanProfile, ScanProfileId, ScanSummary } from "./types";
+import type {
+  AppSettings,
+  CleanupPlan,
+  CleanupSummary,
+  DiskInfo,
+  Finding,
+  ScanProfile,
+  ScanProfileId,
+  ScanSummary,
+} from "./types";
 
 export const commands = {
   listDisks: () => invoke<DiskInfo[]>("list_disks"),
@@ -16,5 +25,17 @@ export const commands = {
     invoke<Finding[]>("get_scan_findings", { request: { scanId, offset, limit } }),
   revealItem: (scanId: string, findingId: string) =>
     invoke<void>("reveal_item", { request: { scanId, findingId } }),
+  createCleanupPlan: (scanId: string, findingIds: string[]) =>
+    invoke<CleanupPlan>("create_cleanup_plan", {
+      request: { scanId, findingIds, action: "moveToTrash" },
+    }),
+  executeCleanupPlan: (planId: string, confirmationToken: string) =>
+    invoke<{ operationId: string }>("execute_cleanup_plan", {
+      request: { planId, confirmationToken },
+    }),
+  cancelCleanup: (operationId: string) =>
+    invoke<void>("cancel_cleanup", { request: { operationId } }),
+  getCleanupHistory: (offset = 0, limit = 50) =>
+    invoke<CleanupSummary[]>("get_cleanup_history", { request: { offset, limit } }),
+  clearCleanupHistory: () => invoke<void>("clear_cleanup_history"),
 };
-

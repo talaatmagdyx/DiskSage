@@ -1,4 +1,5 @@
 pub mod app_state;
+pub mod cleanup;
 pub mod commands;
 pub mod domain;
 pub mod observability;
@@ -15,8 +16,14 @@ pub fn run() {
         .setup(|app| {
             observability::logging::init();
             let settings_path = app.path().app_config_dir()?.join("settings.json");
-            let scans_path = app.path().app_data_dir()?.join("scans");
-            app.manage(app_state::AppState::new(settings_path, scans_path));
+            let data_path = app.path().app_data_dir()?;
+            let scans_path = data_path.join("scans");
+            let history_path = data_path.join("cleanup-history.ndjson");
+            app.manage(app_state::AppState::new(
+                settings_path,
+                scans_path,
+                history_path,
+            ));
             tracing::info!(version = env!("CARGO_PKG_VERSION"), "DiskSage initialized");
             Ok(())
         })
@@ -30,6 +37,11 @@ pub fn run() {
             commands::scan::get_scan_status,
             commands::scan::get_scan_findings,
             commands::scan::reveal_item,
+            commands::cleanup::create_cleanup_plan,
+            commands::cleanup::execute_cleanup_plan,
+            commands::cleanup::cancel_cleanup,
+            commands::cleanup::get_cleanup_history,
+            commands::cleanup::clear_cleanup_history,
             commands::settings::get_settings,
             commands::settings::update_settings,
         ])

@@ -10,7 +10,7 @@ pub struct ResolvedRule {
     pub target: PathBuf,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct RulesRegistry;
 
 impl RulesRegistry {
@@ -46,5 +46,17 @@ impl RulesRegistry {
                 }
             })
             .collect()
+    }
+
+    pub fn resolve(
+        &self,
+        rule_id: &str,
+        rule_version: u32,
+        home: &Path,
+        platform: &str,
+    ) -> Option<ResolvedRule> {
+        self.rules_for(ScanProfileId::Developer, home, platform)
+            .into_iter()
+            .find(|rule| rule.definition.id == rule_id && rule.definition.version == rule_version)
     }
 }

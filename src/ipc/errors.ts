@@ -7,6 +7,9 @@ const friendlyMessages: Partial<Record<ErrorCode, string>> = {
   PATH_PROTECTED: "That location is protected and cannot be cleaned.",
   SERIALIZATION_FAILED: "Local settings could not be read or saved.",
   COMMAND_UNAVAILABLE: "This feature is not available in the current build.",
+  PLAN_EXPIRED: "That cleanup plan expired. Review the selected findings again.",
+  PLAN_VALIDATION_FAILED: "The cleanup plan changed or could not be validated safely.",
+  TRASH_FAILED: "An item could not be moved to Trash.",
 };
 
 export function normalizeCommandError(value: unknown): CommandError {

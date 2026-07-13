@@ -1,5 +1,14 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { Finding, ScanProgress, ScanSummary } from "./types";
+import type {
+  CleanupItemResult,
+  CleanupProgress,
+  CleanupSummary,
+  CommandError,
+  Finding,
+  ScanProgress,
+  ScanSummary,
+} from "./types";
+import { useCleanupStore } from "../stores/cleanupStore";
 import { useFindingsStore } from "../stores/findingsStore";
 import { useScanStore } from "../stores/scanStore";
 
@@ -10,7 +19,16 @@ export async function listenForScanEvents(): Promise<UnlistenFn> {
     listen<ScanSummary>("scan://completed", ({ payload }) => useScanStore.getState().handleSummary(payload)),
     listen<ScanSummary>("scan://cancelled", ({ payload }) => useScanStore.getState().handleSummary(payload)),
     listen<ScanSummary>("scan://failed", ({ payload }) => useScanStore.getState().handleSummary(payload)),
+    listen<CleanupProgress>("cleanup://started", ({ payload }) => useCleanupStore.getState().handleProgress(payload)),
+    listen<CleanupProgress>("cleanup://progress", ({ payload }) => useCleanupStore.getState().handleProgress(payload)),
+    listen<CleanupItemResult>("cleanup://item-completed", ({ payload }) => useCleanupStore.getState().handleItem(payload)),
+    listen<CleanupSummary>("cleanup://completed", ({ payload }) => {
+      useCleanupStore.getState().handleSummary(payload);
+      useFindingsStore.getState().remove(
+        payload.items.filter((item) => item.status === "movedToTrash").map((item) => item.findingId),
+      );
+    }),
+    listen<CommandError>("cleanup://failed", ({ payload }) => useCleanupStore.getState().handleFailure(payload)),
   ]);
   return () => unlisteners.forEach((unlisten) => unlisten());
 }
-

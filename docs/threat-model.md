@@ -18,7 +18,7 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 | --- | --- |
 | Frontend submits arbitrary path | IPC accepts finding IDs or backend-issued plan IDs, never cleanup paths |
 | Path traversal | Absolute-path validation, lexical normalization, canonicalization where possible |
-| Symlink swap or target deletion | `symlink_metadata`, no target following, immediate revalidation |
+| Symlink swap or target deletion | Frozen canonical plan target, `symlink_metadata`, no target following, immediate revalidation |
 | Protected content matched by broad rule | Protected-root deny policy plus exact backend rule allowlist |
 | Stale or replayed cleanup | Expiring immutable plan and single-use confirmation token |
 | File changes after scan | Type, size, modification time, root, and rule revalidation; skip on mismatch |
@@ -30,9 +30,8 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 
 ## Current attack surface
 
-The capability file grants only Tauri core defaults. No dialog, shell, broad filesystem, opener, or destructive custom command is exposed. `get_disk_info` only accepts a mount path and returns it only when it matches the operating system's current mounted-disk list.
+The capability file grants only Tauri core defaults. No shell, broad filesystem, opener, or arbitrary-path cleanup command is exposed. Custom cleanup IPC accepts finding IDs for planning and a backend-issued plan ID plus token for execution. The only executor uses the operating system Trash; permanent deletion is rejected.
 
 ## Security gates for later phases
 
-Scanner work requires cancellation, boundary/exclusion tests, and bounded-memory evidence. Cleanup work requires all mandatory protected-path, symlink, stale-plan, changed-item, duplicate-retention, and permanent-confirmation tests before any executor is registered.
-
+Careful/expert rules, duplicate cleanup, guided commands, and permanent deletion require their later dedicated gates. Phase 3 remains restricted to exact versioned safe-cache targets.

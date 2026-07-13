@@ -20,6 +20,7 @@ use crate::{
     },
     persistence::scans::ScanRepository,
     rules::{registry::ResolvedRule, registry::RulesRegistry},
+    safety::protected_paths::ProtectedPathPolicy,
 };
 
 use super::{
@@ -225,7 +226,7 @@ impl ScanManager {
                 && measurement.logical_size >= rule.definition.minimum_size.unwrap_or_default()
                 && !cancellation.is_cancelled()
             {
-                let finding = build_finding(&summary.scan_id, &home, rule, &measurement);
+                let finding = build_finding(&summary.scan_id, &home, platform, rule, &measurement);
                 match self.repository.append_finding(&finding) {
                     Ok(()) => {
                         summary.findings_count += 1;
@@ -346,6 +347,7 @@ fn merge_measurement(summary: &mut ScanSummary, measurement: &TargetMeasurement)
 fn build_finding(
     scan_id: &str,
     home: &Path,
+    platform: &str,
     rule: ResolvedRule,
     measurement: &TargetMeasurement,
 ) -> Finding {
@@ -356,6 +358,13 @@ fn build_finding(
     } else {
         FindingEvidence::KnownPath
     };
+    let cleanup_block_reason = ProtectedPathPolicy::for_platform(home, platform)
+        .check_cleanup_candidate(&rule.target, true)
+        .map(|reason| format!("Protected by the {} policy.", reason.reason));
+    let cleanup_allowed = cleanup_block_reason.is_none()
+        && rule.definition.risk == crate::domain::rule::RiskLevel::Safe
+        && rule.definition.recommended_action
+            == crate::domain::rule::RecommendedAction::MoveToTrash;
     Finding {
         id: Uuid::new_v4().to_string(),
         scan_id: scan_id.to_owned(),
@@ -373,10 +382,8 @@ fn build_finding(
         risk: rule.definition.risk,
         recommended_action: rule.definition.recommended_action,
         evidence,
-        cleanup_allowed: false,
-        cleanup_block_reason: Some(
-            "Cleanup is not available until the immutable plan workflow is implemented.".to_owned(),
-        ),
+        cleanup_allowed,
+        cleanup_block_reason,
     }
 }
 

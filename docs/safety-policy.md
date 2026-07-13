@@ -19,9 +19,9 @@ macOS adds `/System`, `/Applications`, critical Unix roots, `~/Library/Keychains
 
 Linux adds critical Unix roots plus `/proc`, `/sys`, `/dev`, `/run`, `/root`, and `/lost+found`.
 
-The Rust policy performs lexical normalization before comparison so `..` cannot bypass a protected prefix. Canonicalization and symlink metadata checks will be mandatory in the cleanup validator introduced in Phase 3.
+The Rust policy performs lexical normalization before comparison so `..` cannot bypass a protected prefix. Phase 3 additionally freezes the canonical target in the plan and uses symlink metadata immediately before execution, preventing a parent-symlink redirect from silently changing the approved target.
 
-## Future cleanup authorization
+## Cleanup authorization
 
 ```text
 selected finding IDs
@@ -35,11 +35,10 @@ selected finding IDs
   -> independently trash eligible items
 ```
 
-The cleanup executor will never accept `Vec<String>` paths from IPC. Permanent deletion will be a separate executor behind a disabled-by-default feature, dedicated confirmation UI, typed confirmation for expert risk, and mandatory audit record.
+The cleanup executor never accepts `Vec<String>` paths from IPC. Plans expire after 15 minutes and are consumed once. Permanent deletion remains rejected by the backend and will require a separate future security gate.
 
 ## Risk defaults
 
 - Safe: may become preselectable through an explicit setting after rules have tests.
 - Careful: never selected by default.
 - Expert: never selected by default and always uses a dedicated confirmation flow.
-

@@ -5,6 +5,7 @@ import { FoundationPage } from "../pages/FoundationPage";
 import { FindingsPage } from "../pages/FindingsPage";
 import { ScanPage } from "../pages/ScanPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { HistoryPage } from "../pages/HistoryPage";
 
 export function AppRouter() {
   return (
@@ -14,7 +15,7 @@ export function AppRouter() {
         <Route path="scan" element={<ScanPage />} />
         <Route path="cleanup" element={<FindingsPage />} />
         <Route path="duplicates" element={<FoundationPage title="Duplicates" />} />
-        <Route path="history" element={<FoundationPage title="History" />} />
+        <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

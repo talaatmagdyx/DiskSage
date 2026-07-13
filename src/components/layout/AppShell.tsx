@@ -56,9 +56,9 @@ export function AppShell() {
         <div className="mt-auto">
           <div className="mb-3 rounded-xl border border-sage-400/15 bg-sage-400/[0.06] p-3">
             <p className="flex items-center gap-2 text-xs font-semibold text-sage-100">
-              <ShieldCheck aria-hidden="true" size={14} /> No destructive actions
+              <ShieldCheck aria-hidden="true" size={14} /> Trash-first cleanup
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">This foundation build only reads disk metadata.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Every item is planned, reviewed, and revalidated before it moves.</p>
           </div>
           <NavLink
             to="/settings"

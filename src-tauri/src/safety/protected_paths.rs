@@ -8,6 +8,7 @@ pub struct ProtectionReason {
 
 #[derive(Debug, Clone)]
 pub struct ProtectedPathPolicy {
+    home: PathBuf,
     roots: Vec<(PathBuf, &'static str)>,
 }
 
@@ -69,7 +70,10 @@ impl ProtectedPathPolicy {
                 .count()
                 .cmp(&left.0.components().count())
         });
-        Self { roots }
+        Self {
+            home: home.to_path_buf(),
+            roots,
+        }
     }
 
     pub fn check(&self, candidate: &Path) -> Option<ProtectionReason> {
@@ -84,6 +88,20 @@ impl ProtectedPathPolicy {
                 })
             } else {
                 None
+            }
+        })
+    }
+
+    pub fn check_cleanup_candidate(
+        &self,
+        candidate: &Path,
+        exact_known_rule_target: bool,
+    ) -> Option<ProtectionReason> {
+        self.check(candidate).and_then(|reason| {
+            if exact_known_rule_target && reason.protected_root == self.home {
+                None
+            } else {
+                Some(reason)
             }
         })
     }
@@ -135,6 +153,20 @@ mod tests {
     fn allows_unprotected_cache_candidate_for_later_rule_validation() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
         assert!(policy.check(Path::new("/opt/cache/npm")).is_none());
+    }
+
+    #[test]
+    fn allows_only_exact_known_children_inside_home() {
+        let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
+        assert!(policy
+            .check_cleanup_candidate(Path::new("/home/alex/.cache/npm"), true)
+            .is_none());
+        assert!(policy
+            .check_cleanup_candidate(Path::new("/home/alex/.cache/npm"), false)
+            .is_some());
+        assert!(policy
+            .check_cleanup_candidate(Path::new("/home/alex/.ssh/key"), true)
+            .is_some());
     }
 
     #[test]
