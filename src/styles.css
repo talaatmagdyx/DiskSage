@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --canvas: 165 34% 5%;
+  --panel: 164 24% 9%;
+  --line: 162 16% 18%;
+  --ink: 150 20% 94%;
+  --muted: 157 8% 62%;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  border-color: hsl(var(--line));
+}
+
+html,
+body,
+#root {
+  min-width: 800px;
+  min-height: 600px;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-canvas font-sans text-ink antialiased;
+  background-image:
+    radial-gradient(circle at 72% -10%, rgba(33, 157, 114, 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 36%);
+}
+
+button,
+a,
+input,
+select {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-sage-300 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+}
+
+@layer components {
+  .control {
+    @apply w-full rounded-xl border border-line bg-canvas/70 px-3 py-2.5 text-sm text-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
