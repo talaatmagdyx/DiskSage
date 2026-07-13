@@ -1,3 +1,8 @@
+use std::{
+    collections::HashSet,
+    path::{Component, Path},
+};
+
 use serde::{Deserialize, Serialize};
 
 use super::error::{CommandError, ErrorCode};
@@ -46,6 +51,8 @@ pub struct AppSettings {
     pub diagnostic_logging: bool,
     pub theme: Theme,
     pub reduced_motion: bool,
+    #[serde(default)]
+    pub project_roots: Vec<String>,
 }
 
 impl Default for AppSettings {
@@ -68,6 +75,7 @@ impl Default for AppSettings {
             diagnostic_logging: false,
             theme: Theme::System,
             reduced_motion: false,
+            project_roots: Vec::new(),
         }
     }
 }
@@ -116,6 +124,50 @@ impl AppSettings {
                 true,
             ));
         }
+        if self.project_roots.len() > 20 {
+            return Err(CommandError::new(
+                ErrorCode::InvalidSettings,
+                "At most 20 project roots can be configured.",
+                true,
+            ));
+        }
+        let mut unique = HashSet::new();
+        for root in &self.project_roots {
+            let path = Path::new(root);
+            if root.len() > 4096
+                || !path.is_absolute()
+                || path.parent().is_none()
+                || path
+                    .components()
+                    .any(|component| matches!(component, Component::ParentDir))
+                || !unique.insert(root)
+            {
+                return Err(CommandError::new(
+                    ErrorCode::InvalidSettings,
+                    "Project roots must be unique absolute non-root paths without traversal.",
+                    true,
+                ));
+            }
+        }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_roots_reject_roots_relative_paths_and_traversal() {
+        for invalid in ["/", "relative/project", "/tmp/../etc"] {
+            let settings = AppSettings {
+                project_roots: vec![invalid.to_owned()],
+                ..AppSettings::default()
+            };
+            assert_eq!(
+                settings.validate().unwrap_err().code,
+                ErrorCode::InvalidSettings
+            );
+        }
     }
 }

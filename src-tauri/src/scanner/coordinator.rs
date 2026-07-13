@@ -35,6 +35,12 @@ struct ActiveScan {
     cancellation: CancellationToken,
 }
 
+struct ScanScope {
+    home: PathBuf,
+    platform: &'static str,
+    project_roots: Vec<PathBuf>,
+}
+
 pub struct ScanManager {
     active: Mutex<Option<ActiveScan>>,
     statuses: Mutex<HashMap<String, ScanSummary>>,
@@ -55,7 +61,7 @@ impl ScanManager {
     pub fn profiles() -> Vec<ScanProfile> {
         vec![
             profile(ScanProfileId::Quick, "Quick Scan", "Common low-risk caches", "Usually under 30 seconds", true, None),
-            profile(ScanProfileId::Developer, "Developer Scan", "Known package-manager and browser caches", "Usually under 2 minutes", true, None),
+            profile(ScanProfileId::Developer, "Developer Scan", "Package caches, configured projects, IDEs, Docker, and emulators", "Usually under 2 minutes", true, None),
             profile(
                 ScanProfileId::FullAnalysis,
                 "Full Analysis",
@@ -81,6 +87,7 @@ impl ScanManager {
         request: StartScanRequest,
         home: PathBuf,
         platform: &'static str,
+        project_roots: Vec<PathBuf>,
     ) -> Result<String, CommandError> {
         if !matches!(
             request.profile,
@@ -123,10 +130,15 @@ impl ScanManager {
 
         let manager = Arc::clone(self);
         let worker_scan_id = scan_id.clone();
+        let scope = ScanScope {
+            home,
+            platform,
+            project_roots,
+        };
         tauri::async_runtime::spawn(async move {
             let worker_manager = Arc::clone(&manager);
             let result = tauri::async_runtime::spawn_blocking(move || {
-                worker_manager.run_scan(app, summary, home, platform, exclusions, cancellation)
+                worker_manager.run_scan(app, summary, scope, exclusions, cancellation)
             })
             .await;
             if let Err(error) = result {
@@ -177,18 +189,22 @@ impl ScanManager {
         &self,
         app: AppHandle,
         mut summary: ScanSummary,
-        home: PathBuf,
-        platform: &'static str,
+        scope: ScanScope,
         exclusions: ExclusionMatcher,
         cancellation: CancellationToken,
     ) {
+        let ScanScope {
+            home,
+            platform,
+            project_roots,
+        } = scope;
         let started = Instant::now();
         let _ = app.emit("scan://started", &summary);
         summary.phase = ScanPhase::DiscoveringTargets;
         self.publish_status(&summary);
-        let rules = self
-            .rules_registry
-            .rules_for(summary.profile, &home, platform);
+        let rules =
+            self.rules_registry
+                .rules_for_scan(summary.profile, &home, platform, &project_roots);
         let _ = app.emit("scan://progress", progress_from(&summary, None));
         summary.phase = ScanPhase::Scanning;
         let mut last_progress = Instant::now() - Duration::from_secs(1);
@@ -351,20 +367,50 @@ fn build_finding(
     rule: ResolvedRule,
     measurement: &TargetMeasurement,
 ) -> Finding {
-    let evidence = if rule.definition.category == RuleCategory::PackageManagerCache {
-        FindingEvidence::PackageManagerCache {
+    let evidence = match rule.definition.category {
+        RuleCategory::PackageManagerCache => FindingEvidence::PackageManagerCache {
             manager: rule.definition.display_name.clone(),
-        }
-    } else {
-        FindingEvidence::KnownPath
+        },
+        RuleCategory::BuildArtifact | RuleCategory::Log => FindingEvidence::DirectoryNameMatch {
+            directory_name: rule
+                .target
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| rule.definition.display_name.clone()),
+        },
+        _ => FindingEvidence::KnownPath,
     };
-    let cleanup_block_reason = ProtectedPathPolicy::for_platform(home, platform)
+    let policy_block_reason = ProtectedPathPolicy::for_platform(home, platform)
         .check_cleanup_candidate(&rule.target, true)
         .map(|reason| format!("Protected by the {} policy.", reason.reason));
-    let cleanup_allowed = cleanup_block_reason.is_none()
+    let cleanup_allowed = policy_block_reason.is_none()
         && rule.definition.risk == crate::domain::rule::RiskLevel::Safe
         && rule.definition.recommended_action
             == crate::domain::rule::RecommendedAction::MoveToTrash;
+    let cleanup_block_reason = if cleanup_allowed {
+        None
+    } else if rule.definition.risk != crate::domain::rule::RiskLevel::Safe {
+        Some(format!(
+            "{} findings are review-only and are never selected automatically.",
+            match rule.definition.risk {
+                crate::domain::rule::RiskLevel::Careful => "Careful",
+                crate::domain::rule::RiskLevel::Expert => "Expert",
+                crate::domain::rule::RiskLevel::Safe => "Safe",
+            }
+        ))
+    } else {
+        policy_block_reason
+    };
+    let item_type = std::fs::symlink_metadata(&rule.target)
+        .ok()
+        .map(|metadata| {
+            if metadata.is_file() {
+                FindingType::File
+            } else {
+                FindingType::Directory
+            }
+        })
+        .unwrap_or(FindingType::Directory);
     Finding {
         id: Uuid::new_v4().to_string(),
         scan_id: scan_id.to_owned(),
@@ -375,7 +421,7 @@ fn build_finding(
         description: rule.definition.description,
         path: rule.target.clone(),
         display_path: display_path(&rule.target, home),
-        item_type: FindingType::Directory,
+        item_type,
         logical_size: measurement.logical_size,
         allocated_size: Some(measurement.allocated_size),
         modified_at: measurement.modified_at.map(DateTime::<Utc>::from),

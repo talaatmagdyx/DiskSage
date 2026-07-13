@@ -36,9 +36,19 @@ pub fn start_scan(
         .path()
         .home_dir()
         .map_err(|error| CommandError::internal(error.to_string()))?;
-    let scan_id = state
-        .scan_manager
-        .start(app, request, home, std::env::consts::OS)?;
+    let project_roots = state
+        .settings_repository
+        .lock()
+        .map_err(|_| CommandError::internal("settings lock poisoned"))?
+        .load()?
+        .project_roots
+        .into_iter()
+        .map(std::path::PathBuf::from)
+        .collect();
+    let scan_id =
+        state
+            .scan_manager
+            .start(app, request, home, std::env::consts::OS, project_roots)?;
     Ok(StartScanResponse { scan_id })
 }
 

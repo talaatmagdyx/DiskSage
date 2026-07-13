@@ -40,5 +40,7 @@ The cleanup executor never accepts `Vec<String>` paths from IPC. Plans expire af
 ## Risk defaults
 
 - Safe: may become preselectable through an explicit setting after rules have tests.
-- Careful: never selected by default.
-- Expert: never selected by default and always uses a dedicated confirmation flow.
+- Careful: never selected by default; Phase 4 project artifacts and IDE caches are review-only.
+- Expert: never selected by default; Docker virtual disks and emulator state expose guided inspection only.
+
+Project artifact names are never trusted outside project context. A `build`, `target`, or `logs` directory is considered only under a user-configured root after a matching manifest such as `package.json`, `Cargo.toml`, `pyproject.toml`, or `pom.xml` is found. Discovery skips symlinks and known artifact trees.

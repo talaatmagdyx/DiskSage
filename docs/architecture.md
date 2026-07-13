@@ -2,7 +2,7 @@
 
 ## Phase boundary
 
-Phase 3 adds trash-first cleanup for exact safe cache targets. Mounted-disk metadata, targeted scans, settings, findings, and cleanup history remain local. Permanent deletion, expert cleanup, and arbitrary path cleanup are unavailable.
+Phase 4 adds developer-aware inspection while preserving Phase 3's trash boundary. Configured project roots are searched to a bounded depth for known manifests before context-sensitive artifacts are measured. Careful/expert findings, Docker storage, and emulator state remain review-only. Permanent deletion, expert cleanup, and arbitrary path cleanup are unavailable.
 
 ## Trust boundaries
 
@@ -17,6 +17,7 @@ Rust command adapters
         +-- settings repository (app-owned file only)
         +-- scan coordinator (one heavy scan, cancellable worker)
         +-- rules registry (versioned backend-owned targets)
+        +-- project detector (configured roots + manifest context)
         +-- findings repository (flat local NDJSON pages)
         +-- cleanup coordinator (single-use plans and cancellation)
         +-- history repository (local per-item audit records)

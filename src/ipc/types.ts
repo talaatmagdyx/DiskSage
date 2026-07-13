@@ -28,6 +28,7 @@ export type AppSettings = {
   diagnosticLogging: boolean;
   theme: "system" | "light" | "dark";
   reducedMotion: boolean;
+  projectRoots: string[];
 };
 
 export type ErrorCode =

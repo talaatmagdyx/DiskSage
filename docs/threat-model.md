@@ -20,6 +20,7 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 | Path traversal | Absolute-path validation, lexical normalization, canonicalization where possible |
 | Symlink swap or target deletion | Frozen canonical plan target, `symlink_metadata`, no target following, immediate revalidation |
 | Protected content matched by broad rule | Protected-root deny policy plus exact backend rule allowlist |
+| Generic `build` directory misclassified | User-configured roots plus manifest-gated project context; review-only result |
 | Stale or replayed cleanup | Expiring immutable plan and single-use confirmation token |
 | File changes after scan | Type, size, modification time, root, and rule revalidation; skip on mismatch |
 | Partial permission or trash failure | Per-item result, continue safely, structured recoverable error |
@@ -34,4 +35,4 @@ The capability file grants only Tauri core defaults. No shell, broad filesystem,
 
 ## Security gates for later phases
 
-Careful/expert rules, duplicate cleanup, guided commands, and permanent deletion require their later dedicated gates. Phase 3 remains restricted to exact versioned safe-cache targets.
+Careful/expert findings are visible but not executable. Duplicate cleanup, execution of guided commands, and permanent deletion require their later dedicated gates. Trash cleanup remains restricted to exact versioned safe-cache targets.

@@ -46,6 +46,10 @@ export function SettingsPage() {
               <Toggle checked={draft.scanExternalDrives} onChange={(value) => update("scanExternalDrives", value)} label="Include external drives" />
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={14} aria-hidden="true" /> Symlink following is locked off by the backend contract.</div>
+            <Field label="Project roots for Developer Scan">
+              <textarea className="control mt-4 min-h-28 font-mono text-xs" placeholder="/Users/you/Projects&#10;/Users/you/Work" value={draft.projectRoots.join("\n")} onChange={(event) => update("projectRoots", event.target.value.split("\n").map((value) => value.trim()).filter(Boolean))} />
+            </Field>
+            <p className="mt-2 text-xs text-muted">One absolute path per line. DiskSage detects project indicators before considering context-sensitive artifacts.</p>
           </Card>
 
           <Card className="p-6">
@@ -61,7 +65,7 @@ export function SettingsPage() {
               <AlertTriangle className="mt-0.5 text-amber-300" size={19} aria-hidden="true" />
               <div>
                 <h2 className="font-semibold">Advanced cleanup</h2>
-                <p className="mt-1 text-sm leading-6 text-muted">Permanent deletion is disabled and no deletion command exists in this foundation build.</p>
+                <p className="mt-1 text-sm leading-6 text-muted">Permanent deletion is disabled and no permanent-delete command exists in this build.</p>
               </div>
             </div>
             <div className="mt-4">
@@ -94,4 +98,3 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
     </label>
   );
 }
-

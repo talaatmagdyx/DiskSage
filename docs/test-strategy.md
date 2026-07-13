@@ -18,3 +18,7 @@ Add fixtures for nested trees, permission denial, symlink loops, broken links, s
 ## Phase 3 safety gate
 
 Tests demonstrate that cleanup cannot target a filesystem root, home, protected path, item outside a backend plan, expired or reused plan, symlink target, changed item, parent-symlink redirect, or unsupported duplicate finding. Permanent deletion is rejected before any plan is created. Store tests prove execution does not begin until a backend plan is reviewed and that partial outcomes remain visible.
+
+## Phase 4 rule gate
+
+Catalog tests enforce unique, versioned rule IDs, at least 25 definitions, relative home targets, and disabled defaults for every careful/expert rule. Project fixtures prove artifacts are absent without manifest context and detected only after a supported project indicator exists. Discovery fixtures prove known artifact trees are not recursively treated as nested projects.

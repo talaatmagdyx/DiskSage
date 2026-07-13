@@ -21,7 +21,7 @@ export function ScanPage() {
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-sage-300">Targeted analysis</p>
       <h1 className="text-3xl font-semibold tracking-tight">Choose a scan</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-        DiskSage only visits backend-owned cache locations for these profiles. Symbolic links and other filesystems are skipped.
+        DiskSage visits known developer locations plus project roots you explicitly configure. Symbolic links and other filesystems are skipped.
       </p>
 
       {error && <Card className="mt-6 border-amber-400/20 p-4 text-sm text-amber-100" role="alert">{error.message}</Card>}
@@ -89,4 +89,3 @@ export function ScanPage() {
 function ProgressMetric({ label, value }: { label: string; value: string }) {
   return <div className="bg-panel px-5 py-4"><p className="text-xs text-muted">{label}</p><p className="mt-1 font-semibold tabular-nums">{value}</p></div>;
 }
-

@@ -2,7 +2,7 @@
 
 DiskSage is a local-first macOS and Linux desktop application for understanding disk usage and reviewing safe cleanup recommendations. Safety takes precedence over maximum cleanup.
 
-This repository currently implements Phase 0 through Phase 3's trash-first cleanup workflow:
+This repository currently implements Phase 0 through Phase 4's developer-aware analysis and trash-first cleanup workflow:
 
 - Tauri 2 + Rust desktop foundation
 - React 18, TypeScript, Vite, TailwindCSS, shadcn-compatible component setup, routing, and Zustand
@@ -21,6 +21,10 @@ This repository currently implements Phase 0 through Phase 3's trash-first clean
 - Canonical-path, rule, type, size, modification-time, and symlink revalidation immediately before cleanup
 - Independent Move to Trash operations with cancellation, partial-failure reporting, and disk refresh
 - Local NDJSON cleanup history with per-item outcomes and a dedicated History page
+- Thirty-nine versioned rules spanning package/browser caches, IDEs, project artifacts, Docker, and emulators
+- User-configurable project roots with manifest-gated detection and bounded discovery depth
+- Careful and expert developer findings that remain review-only and unselected by default
+- Docker virtual disk and emulator inspection with guided actions; no direct Docker or emulator deletion
 
 Permanent deletion remains intentionally unavailable. Phase 3 only moves approved safe cache targets to the operating system Trash.
 
