@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { DashboardPage } from "../pages/DashboardPage";
-import { FoundationPage } from "../pages/FoundationPage";
+import { DuplicatesPage } from "../pages/DuplicatesPage";
 import { FindingsPage } from "../pages/FindingsPage";
 import { ScanPage } from "../pages/ScanPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -14,7 +14,7 @@ export function AppRouter() {
         <Route index element={<DashboardPage />} />
         <Route path="scan" element={<ScanPage />} />
         <Route path="cleanup" element={<FindingsPage />} />
-        <Route path="duplicates" element={<FoundationPage title="Duplicates" />} />
+        <Route path="duplicates" element={<DuplicatesPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

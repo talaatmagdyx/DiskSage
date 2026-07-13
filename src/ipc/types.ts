@@ -197,3 +197,92 @@ export type CleanupSummary = {
   items: CleanupItemResult[];
   disks: DiskInfo[];
 };
+
+export type DuplicateScanPhase =
+  | "discovering"
+  | "grouping"
+  | "partialHashing"
+  | "fullHashing"
+  | "verifying"
+  | "finalizing"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export type DuplicateCopy = {
+  id: string;
+  path: string;
+  displayPath: string;
+  modifiedAt?: string;
+  owner?: string;
+};
+
+export type DuplicateGroup = {
+  id: string;
+  scanId: string;
+  fileSize: number;
+  reclaimableBytes: number;
+  copies: DuplicateCopy[];
+  recommendedKeepId: string;
+  keepReason: string;
+  fullHash: string;
+  byteForByteVerified: boolean;
+};
+
+export type DuplicateProgress = {
+  scanId: string;
+  phase: DuplicateScanPhase;
+  currentPath?: string;
+  filesScanned: number;
+  candidateFiles: number;
+  bytesHashed: number;
+  groupsFound: number;
+  reclaimableBytes: number;
+  skippedCount: number;
+  permissionDeniedCount: number;
+  elapsedMs: number;
+};
+
+export type DuplicateSummary = Omit<DuplicateProgress, "currentPath"> & {
+  roots: string[];
+  minimumSizeBytes: number;
+  byteForByteVerification: boolean;
+  startedAt: string;
+  completedAt?: string;
+  duplicateFiles: number;
+  errors: CommandError[];
+};
+
+export type DuplicateCleanupSelection = {
+  groupId: string;
+  keepCopyId: string;
+  trashCopyIds: string[];
+};
+
+export type DuplicateCleanupPlanItem = {
+  groupId: string;
+  copyId: string;
+  path: string;
+  canonicalPath: string;
+  expectedSize: number;
+  expectedModifiedAt?: string;
+  fullHash: string;
+  keepCopyId: string;
+  keepPath: string;
+  keepCanonicalPath: string;
+  keepModifiedAt?: string;
+  byteForByteVerified: boolean;
+  validationToken: string;
+};
+
+export type DuplicateCleanupPlan = {
+  id: string;
+  scanId: string;
+  createdAt: string;
+  expiresAt: string;
+  action: CleanupAction;
+  items: DuplicateCleanupPlanItem[];
+  expectedReclaimableBytes: number;
+  keptCopyCount: number;
+  confirmationToken: string;
+};

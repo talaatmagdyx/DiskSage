@@ -4,6 +4,10 @@ import type {
   CleanupPlan,
   CleanupSummary,
   DiskInfo,
+  DuplicateCleanupPlan,
+  DuplicateCleanupSelection,
+  DuplicateGroup,
+  DuplicateSummary,
   Finding,
   ScanProfile,
   ScanProfileId,
@@ -38,4 +42,26 @@ export const commands = {
   getCleanupHistory: (offset = 0, limit = 50) =>
     invoke<CleanupSummary[]>("get_cleanup_history", { request: { offset, limit } }),
   clearCleanupHistory: () => invoke<void>("clear_cleanup_history"),
+  startDuplicateScan: (roots: string[], minimumSizeBytes: number, byteForByteVerification: boolean) =>
+    invoke<{ scanId: string }>("start_duplicate_scan", {
+      request: { roots, minimumSizeBytes, byteForByteVerification },
+    }),
+  cancelDuplicateScan: (scanId: string) =>
+    invoke<void>("cancel_duplicate_scan", { request: { scanId } }),
+  getDuplicateScanStatus: (scanId: string) =>
+    invoke<DuplicateSummary>("get_duplicate_scan_status", { request: { scanId } }),
+  getDuplicateGroups: (scanId: string, offset = 0, limit = 500) =>
+    invoke<DuplicateGroup[]>("get_duplicate_groups", { request: { scanId, offset, limit } }),
+  revealDuplicate: (scanId: string, groupId: string, copyId: string) =>
+    invoke<void>("reveal_duplicate", { request: { scanId, groupId, copyId } }),
+  createDuplicateCleanupPlan: (scanId: string, selections: DuplicateCleanupSelection[]) =>
+    invoke<DuplicateCleanupPlan>("create_duplicate_cleanup_plan", {
+      request: { scanId, selections, action: "moveToTrash" },
+    }),
+  executeDuplicateCleanupPlan: (planId: string, confirmationToken: string) =>
+    invoke<{ operationId: string }>("execute_duplicate_cleanup_plan", {
+      request: { planId, confirmationToken },
+    }),
+  cancelDuplicateCleanup: (operationId: string) =>
+    invoke<void>("cancel_duplicate_cleanup", { request: { operationId } }),
 };

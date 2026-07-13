@@ -23,6 +23,9 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 | Generic `build` directory misclassified | User-configured roots plus manifest-gated project context; review-only result |
 | Stale or replayed cleanup | Expiring immutable plan and single-use confirmation token |
 | File changes after scan | Type, size, modification time, root, and rule revalidation; skip on mismatch |
+| Same-size but different files | Sparse hash filter followed by full BLAKE3; optional byte-for-byte verification |
+| Duplicate plan removes every copy | Backend validates keep membership and requires Trash count below copy count |
+| Keep or duplicate changes after review | Re-hash keep and target, recheck metadata/canonical paths, then skip on mismatch |
 | Partial permission or trash failure | Per-item result, continue safely, structured recoverable error |
 | Data exfiltration | No network service, strict CSP, no remote scripts, local-only persistence |
 | Shell injection | No shell capability; future controlled commands use executable + fixed argument arrays |
@@ -31,8 +34,8 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 
 ## Current attack surface
 
-The capability file grants only Tauri core defaults. No shell, broad filesystem, opener, or arbitrary-path cleanup command is exposed. Custom cleanup IPC accepts finding IDs for planning and a backend-issued plan ID plus token for execution. The only executor uses the operating system Trash; permanent deletion is rejected.
+The capability file grants Tauri core defaults plus the native directory-open dialog. It does not grant shell or frontend filesystem mutation. Custom cleanup IPC accepts backend-owned IDs for planning and a backend-issued plan ID plus token for execution. The only executor uses the operating system Trash; permanent deletion is rejected.
 
 ## Security gates for later phases
 
-Careful/expert findings are visible but not executable. Duplicate cleanup, execution of guided commands, and permanent deletion require their later dedicated gates. Trash cleanup remains restricted to exact versioned safe-cache targets.
+Careful/expert findings are visible but not executable. Duplicate cleanup has a dedicated content and keep-one gate. Execution of guided commands and permanent deletion still require later dedicated gates.

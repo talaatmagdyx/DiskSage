@@ -22,3 +22,7 @@ Tests demonstrate that cleanup cannot target a filesystem root, home, protected 
 ## Phase 4 rule gate
 
 Catalog tests enforce unique, versioned rule IDs, at least 25 definitions, relative home targets, and disabled defaults for every careful/expert rule. Project fixtures prove artifacts are absent without manifest context and detected only after a supported project indicator exists. Discovery fixtures prove known artifact trees are not recursively treated as nested projects.
+
+## Phase 5 duplicate gate
+
+Hashing fixtures prove same-size non-identical files never form a group, identical files do, optional byte verification detects differences, and a cancelled token interrupts hashing. Persistence tests cover paged groups and traversal-resistant IDs. Cleanup tests prove the backend rejects any selection that includes the keep copy or would Trash every copy, while valid plans freeze one survivor. Frontend store tests prove automatic keep selection, keep reassignment, and rejection of attempts to toggle the keep copy into Trash.

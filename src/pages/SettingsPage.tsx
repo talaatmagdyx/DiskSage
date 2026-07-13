@@ -45,6 +45,17 @@ export function SettingsPage() {
               <Toggle checked={draft.scanHiddenFiles} onChange={(value) => update("scanHiddenFiles", value)} label="Include hidden files" />
               <Toggle checked={draft.scanExternalDrives} onChange={(value) => update("scanExternalDrives", value)} label="Include external drives" />
             </div>
+            <div className="mt-5 grid grid-cols-2 gap-5">
+              <Field label="Duplicate minimum size (MiB)">
+                <input className="control" type="number" min={1} max={1_048_576} value={Math.max(1, Math.round(draft.duplicateMinimumSizeBytes / 1_048_576))} onChange={(event) => update("duplicateMinimumSizeBytes", Number(event.target.value) * 1_048_576)} />
+              </Field>
+              <Field label="Duplicate verification">
+                <select className="control" value={draft.duplicateVerificationMode} onChange={(event) => update("duplicateVerificationMode", event.target.value as AppSettings["duplicateVerificationMode"])}>
+                  <option value="fullHash">Full BLAKE3 hash</option>
+                  <option value="byteForByte">Full hash + byte-for-byte</option>
+                </select>
+              </Field>
+            </div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={14} aria-hidden="true" /> Symlink following is locked off by the backend contract.</div>
             <Field label="Project roots for Developer Scan">
               <textarea className="control mt-4 min-h-28 font-mono text-xs" placeholder="/Users/you/Projects&#10;/Users/you/Work" value={draft.projectRoots.join("\n")} onChange={(event) => update("projectRoots", event.target.value.split("\n").map((value) => value.trim()).filter(Boolean))} />

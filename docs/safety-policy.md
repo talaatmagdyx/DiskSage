@@ -10,6 +10,7 @@
 6. A protected descendant is cleanable only through an exact child allowlist owned by a versioned, tested backend rule.
 7. Every plan item is revalidated immediately before execution; a changed or unverifiable item is skipped.
 8. Partial failure is reported per item and never converted to success.
+9. Duplicate cleanup can never select the keep copy and can never remove every copy in a group.
 
 ## Protected roots
 
@@ -36,6 +37,8 @@ selected finding IDs
 ```
 
 The cleanup executor never accepts `Vec<String>` paths from IPC. Plans expire after 15 minutes and are consumed once. Permanent deletion remains rejected by the backend and will require a separate future security gate.
+
+Duplicate scan roots are the deliberate exception for read-only analysis: the native picker returns absolute folders, which the backend canonicalizes, narrows, and rejects when they are filesystem, home, credential, symlink, or system roots. These paths do not authorize cleanup. Duplicate cleanup resolves paths only from persisted group and copy IDs, freezes both keep and Trash paths, and verifies size, modification time, canonical resolution, and full BLAKE3 content before every move. Protected Documents, Desktop, Pictures, Movies, and Music locations remain analysis-only.
 
 ## Risk defaults
 

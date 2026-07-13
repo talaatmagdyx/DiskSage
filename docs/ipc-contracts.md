@@ -2,7 +2,7 @@
 
 All request structs use strict deserialization with unknown fields denied. Responses use camel-case JSON. Failures use `CommandError`; frontend presentation maps its code to a user-safe message and does not render `details`.
 
-## Registered through Phase 3
+## Registered through Phase 5
 
 | Command | Request | Response | Side effects |
 | --- | --- | --- | --- |
@@ -22,13 +22,21 @@ All request structs use strict deserialization with unknown fields denied. Respo
 | `cancel_cleanup` | `{ operationId }` | none | skips remaining items after the current bounded step |
 | `get_cleanup_history` | `{ offset, limit }` | `CleanupSummary[]` | pages app-owned local history |
 | `clear_cleanup_history` | none | none | removes app-owned local history only |
+| `start_duplicate_scan` | `{ roots, minimumSizeBytes, byteForByteVerification }` | opaque duplicate scan ID | validates explicit roots and starts staged local hashing |
+| `cancel_duplicate_scan` | `{ scanId }` | none | interrupts traversal or hashing between bounded chunks |
+| `get_duplicate_scan_status` | `{ scanId }` | `DuplicateSummary` | reads app-owned status |
+| `get_duplicate_groups` | `{ scanId, offset, limit }` | `DuplicateGroup[]` | pages app-owned NDJSON |
+| `reveal_duplicate` | `{ scanId, groupId, copyId }` | none | resolves a persisted copy and reveals its parent |
+| `create_duplicate_cleanup_plan` | `{ scanId, selections, action }` | immutable `DuplicateCleanupPlan` | resolves backend groups and enforces a keep copy; no mutation |
+| `execute_duplicate_cleanup_plan` | `{ planId, confirmationToken }` | opaque operation ID | consumes the plan once, re-hashes, then starts Trash operations |
+| `cancel_duplicate_cleanup` | `{ operationId }` | none | skips remaining planned copies |
 
 ## Deliberately unavailable
 
 Permanent deletion and expert cleanup have no executable command path. The action enum is retained as a versioned contract, but plan creation rejects every action except `moveToTrash`.
 
-`execute_cleanup_plan` contains only `planId` and `confirmationToken`. There is no path list or boolean `confirmed` shortcut. Scan exclusions can only reduce traversal scope; they never grant cleanup authorization.
+Cleanup execution commands contain only `planId` and `confirmationToken`. Duplicate scan roots are frontend paths because the user selects analysis scope, but they never authorize mutation. Duplicate cleanup accepts only persisted group/copy identifiers; the backend rejects the keep ID in a Trash set and rejects every selection that would remove all copies.
 
 ## Event contract
 
-Every scan or cleanup event includes its operation ID. Cleanup emits `started`, `progress`, `item-completed`, `completed`, and `failed`; per-item success is emitted only after the OS Trash operation succeeds.
+Every scan or cleanup event includes its operation ID. Duplicate scans emit `duplicates://progress`, `group`, `completed`, and `failed`. Cleanup emits `started`, `progress`, `item-completed`, `completed`, and `failed`; per-item success is emitted only after the OS Trash operation succeeds.

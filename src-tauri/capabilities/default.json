@@ -3,6 +3,5 @@
   "identifier": "default",
   "description": "Minimum core permissions for the main DiskSage window",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:allow-open"]
 }
-

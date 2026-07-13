@@ -2,7 +2,7 @@
 
 ## Phase boundary
 
-Phase 4 adds developer-aware inspection while preserving Phase 3's trash boundary. Configured project roots are searched to a bounded depth for known manifests before context-sensitive artifacts are measured. Careful/expert findings, Docker storage, and emulator state remain review-only. Permanent deletion, expert cleanup, and arbitrary path cleanup are unavailable.
+Phase 5 adds explicitly scoped duplicate analysis while preserving Phase 3's Trash boundary. Duplicate candidates pass size grouping, sparse content sampling, full BLAKE3 hashing, and optional byte verification. Duplicate cleanup uses a separate immutable plan whose backend-owned group IDs, keep IDs, and copy IDs guarantee at least one survivor. Permanent deletion, expert cleanup, and arbitrary path cleanup remain unavailable.
 
 ## Trust boundaries
 
@@ -19,14 +19,16 @@ Rust command adapters
         +-- rules registry (versioned backend-owned targets)
         +-- project detector (configured roots + manifest context)
         +-- findings repository (flat local NDJSON pages)
+        +-- duplicate coordinator (staged hashing + cancellation)
+        +-- duplicate repository (flat local group pages)
         +-- cleanup coordinator (single-use plans and cancellation)
         +-- history repository (local per-item audit records)
         |
         v
-validated finding IDs -> immutable plan -> canonical revalidation -> OS Trash
+validated finding/group IDs -> immutable plan -> canonical/content revalidation -> OS Trash
 ```
 
-The frontend is not trusted to authorize a path. Plan creation contains backend-issued finding IDs, and execution contains only an opaque plan ID plus confirmation token. The backend recovers paths from local scan persistence, freezes the canonical target, applies exact rule and protected-path policies, and revalidates immediately before each Trash operation.
+The frontend is not trusted to authorize a cleanup path. Rule cleanup contains backend-issued finding IDs. Duplicate cleanup contains a scan ID plus backend-issued group/copy IDs and an explicit keep ID. Execution contains only an opaque plan ID plus confirmation token. The backend recovers paths from local persistence, freezes canonical targets, applies protected-path policy, re-hashes the keep and Trash copies, and revalidates again immediately before each Trash operation.
 
 ## Backend modules
 
@@ -36,14 +38,15 @@ The frontend is not trusted to authorize a path. Plan creation contains backend-
 - `persistence`: app-owned local repositories.
 - `safety`: protected-path policy and exact known-rule allowlisting.
 - `cleanup`: plan coordination, revalidation, and OS Trash adapter.
+- `duplicates`: root validation, staged hashing, deterministic keep selection, and keep-one cleanup coordination.
 - `observability`: structured logs with conservative production filters.
 
-Heavy filesystem work runs outside Tauri's main thread. The scanner uses a bounded depth-first directory stack, keeps one directory handle active at a time, does not follow symlinks, does not cross devices, checks cancellation between entries, and throttles progress to at most roughly seven events per second.
+Heavy filesystem work runs outside Tauri's main thread. Scanners use bounded depth-first directory stacks, do not follow symlinks or cross devices, and check cancellation between entries and hashing chunks. Duplicate analysis retains only file metadata up to a hard candidate ceiling, eliminates unique sizes before hashing, and persists final groups as NDJSON.
 
 ## Frontend state
 
-Disk metadata, settings, scanning, findings, and cleanup have independent Zustand stores. Findings remain canonical in one store and successful cleanup events remove only completed IDs. IPC errors are normalized before reaching presentation components so raw Rust details are not shown in normal UI.
+Disk metadata, settings, scanning, findings, cleanup, and duplicates have independent Zustand stores. The duplicate store owns keep selection and never allows the current keep copy to enter the Trash selection. IPC errors are normalized before reaching presentation components so raw Rust details are not shown in normal UI.
 
 ## Persistence
 
-Settings use schema-versioned atomic JSON. Scan findings and cleanup history use bounded, flat NDJSON records under the application-data directory. SQLite migrations remain appropriate when retention, indexed history queries, or substantially larger scan profiles are introduced.
+Settings use schema-versioned atomic JSON. Scan findings, duplicate groups, and cleanup history use bounded, flat NDJSON records under the application-data directory. SQLite migrations remain appropriate when retention, indexed history queries, or substantially larger scan profiles are introduced.

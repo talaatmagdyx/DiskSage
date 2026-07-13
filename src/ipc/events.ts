@@ -5,12 +5,16 @@ import type {
   CleanupSummary,
   CommandError,
   Finding,
+  DuplicateGroup,
+  DuplicateProgress,
+  DuplicateSummary,
   ScanProgress,
   ScanSummary,
 } from "./types";
 import { useCleanupStore } from "../stores/cleanupStore";
 import { useFindingsStore } from "../stores/findingsStore";
 import { useScanStore } from "../stores/scanStore";
+import { useDuplicateStore } from "../stores/duplicateStore";
 
 export async function listenForScanEvents(): Promise<UnlistenFn> {
   const unlisteners = await Promise.all([
@@ -29,6 +33,19 @@ export async function listenForScanEvents(): Promise<UnlistenFn> {
       );
     }),
     listen<CommandError>("cleanup://failed", ({ payload }) => useCleanupStore.getState().handleFailure(payload)),
+  ]);
+  return () => unlisteners.forEach((unlisten) => unlisten());
+}
+
+export async function listenForDuplicateEvents(): Promise<UnlistenFn> {
+  const unlisteners = await Promise.all([
+    listen<DuplicateProgress>("duplicates://progress", ({ payload }) => useDuplicateStore.getState().handleProgress(payload)),
+    listen<DuplicateGroup>("duplicates://group", ({ payload }) => useDuplicateStore.getState().handleGroup(payload)),
+    listen<DuplicateSummary>("duplicates://completed", ({ payload }) => useDuplicateStore.getState().handleSummary(payload)),
+    listen<CommandError>("duplicates://failed", ({ payload }) => useDuplicateStore.getState().handleFailure(payload)),
+    listen<CleanupSummary>("duplicates://cleanup-completed", ({ payload }) => useDuplicateStore.getState().handleCleanupSummary(payload)),
+    listen<CleanupProgress>("duplicates://cleanup-progress", ({ payload }) => useDuplicateStore.getState().handleCleanupProgress(payload)),
+    listen<CommandError>("duplicates://cleanup-failed", ({ payload }) => useDuplicateStore.getState().handleFailure(payload)),
   ]);
   return () => unlisteners.forEach((unlisten) => unlisten());
 }
