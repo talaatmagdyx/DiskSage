@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, History, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -12,9 +12,11 @@ export function HistoryPage() {
   const [error, setError] = useState<CommandError | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    void commands.getCleanupHistory().then(setEntries).catch((value) => setError(normalizeCommandError(value))).finally(() => setLoading(false));
-  }, []);
+ const load = useCallback(async () => {
+  setLoading(true); setError(null);
+  try { setEntries(await commands.getCleanupHistory()); } catch (value) { setError(normalizeCommandError(value)); } finally { setLoading(false); }
+ }, []);
+ useEffect(() => { void load(); }, [load]);
 
   const clear = async () => {
     try {
@@ -31,7 +33,7 @@ export function HistoryPage() {
         <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-sage-300">Local audit trail</p><h1 className="text-3xl font-semibold">Cleanup history</h1><p className="mt-2 text-sm text-muted">Stored only on this device, including skips and per-item failures.</p></div>
         {entries.length > 0 && <Button onClick={() => void clear()} variant="secondary"><Trash2 size={15} />Clear history</Button>}
       </div>
-      {error ? <Card className="mt-7 border-amber-400/20 p-5" role="alert">{error.message}</Card> : loading ? <Card className="mt-7 p-8 text-sm text-muted">Loading local history…</Card> : entries.length === 0 ? (
+   {error ? <Card className="mt-7 border-amber-400/20 p-5" role="alert"><p>{error.message}</p><Button className="mt-4" variant="secondary" onClick={() => void load()}>Try again</Button></Card> : loading ? <Card className="mt-7 p-8 text-sm text-muted">Loading local history…</Card> : entries.length === 0 ? (
         <Card className="mt-7 grid min-h-72 place-items-center p-10 text-center"><div><History className="mx-auto text-muted" size={34} /><h2 className="mt-4 font-semibold">No cleanup history</h2><p className="mt-2 text-sm text-muted">Completed cleanup plans will appear here.</p></div></Card>
       ) : <div className="mt-7 space-y-3">{entries.map((entry) => (
         <Card className="p-5" key={entry.operationId}>

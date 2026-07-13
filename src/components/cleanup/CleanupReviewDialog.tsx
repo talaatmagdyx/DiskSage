@@ -3,6 +3,7 @@ import { Button } from "../ui/Button";
 import type { CleanupPlan } from "../../ipc/types";
 import { formatBytes } from "../../lib/utils";
 import { useState } from "react";
+import { useModalFocus } from "../../hooks/useModalFocus";
 
 type CleanupReviewDialogProps = {
   plan: CleanupPlan;
@@ -20,9 +21,12 @@ export function CleanupReviewDialog({
   const [typedConfirmation, setTypedConfirmation] = useState("");
   const permanent = plan.action === "permanentDelete";
   const phraseMatches = !plan.requiredConfirmationPhrase || typedConfirmation === plan.requiredConfirmationPhrase;
+  const modal = useModalFocus(onCancel, !busy);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6" role="presentation">
       <section
+        ref={modal.ref}
+        onKeyDown={modal.onKeyDown}
         aria-labelledby="cleanup-review-title"
         aria-modal="true"
         className="w-full max-w-2xl rounded-2xl border border-line bg-panel p-6 shadow-2xl"

@@ -30,3 +30,7 @@ Hashing fixtures prove same-size non-identical files never form a group, identic
 ## Phase 6 destructive and analysis gate
 
 Permanent-executor tests cover regular deletion and symlink refusal. Cleanup tests prove the feature flag blocks plan creation by default, enabled plans preserve the permanent action, and expert plans reject missing or mismatched typed phrases. Custom-analysis fixtures prove large files are Careful review-only findings and hidden/general old files are excluded. Frontend tests prove native confirmation precedes permanent execution and Custom Scan forwards explicit bounded options.
+
+## Phase 7 product gate
+
+Frontend lint, type checks, and production builds cover onboarding, theme application, keyboard routing, focus-trapped dialogs, accessible toasts, error retry actions, and measured list virtualization. Backend tests prove serialized diagnostics omit configured project-root values. The full Rust suite continues to enforce all earlier cleanup gates, and diagnostics export accepts no caller-provided output path.

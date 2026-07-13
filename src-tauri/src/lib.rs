@@ -33,6 +33,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::app::get_app_info,
+            commands::diagnostics::export_diagnostics,
             commands::disk::list_disks,
             commands::disk::get_disk_info,
             commands::scan::get_scan_profiles,

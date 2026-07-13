@@ -13,6 +13,19 @@
   text-rendering: optimizeLegibility;
 }
 
+:root.light {
+  color-scheme: light;
+  --canvas: 150 24% 97%;
+  --panel: 150 24% 100%;
+  --line: 156 14% 82%;
+  --ink: 165 27% 12%;
+  --muted: 162 9% 39%;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
 * {
   border-color: hsl(var(--line));
 }
@@ -31,6 +44,16 @@ body {
   background-image:
     radial-gradient(circle at 72% -10%, rgba(33, 157, 114, 0.16), transparent 36%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 36%);
+}
+
+.light body {
+  background-image:
+    radial-gradient(circle at 72% -10%, rgba(33, 157, 114, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(10, 50, 38, 0.025), transparent 36%);
+}
+
+.light [class*="bg-white/"] {
+  background-color: rgba(20, 70, 54, 0.055);
 }
 
 button,
@@ -55,4 +78,13 @@ select {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
 }

@@ -92,6 +92,7 @@ export function ScanPage() {
               </Button>
             )}
             {summary?.phase === "completed" && <Link className="rounded-xl bg-sage-400 px-4 py-2.5 text-sm font-semibold text-sage-900" to="/cleanup">Review findings</Link>}
+            {summary?.phase === "cancelled" && summary.profile !== "custom" && <Button onClick={() => void start(summary.profile)}><Search size={16} />Run again</Button>}
           </div>
           <div className="grid grid-cols-5 gap-px bg-line">
             <ProgressMetric label="Files" value={(progress?.filesScanned ?? summary?.filesScanned ?? 0).toLocaleString()} />

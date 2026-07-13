@@ -6,10 +6,12 @@ import { FindingsPage } from "../pages/FindingsPage";
 import { ScanPage } from "../pages/ScanPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { HistoryPage } from "../pages/HistoryPage";
+import { OnboardingPage } from "../pages/OnboardingPage";
 
 export function AppRouter() {
   return (
-    <Routes>
+  <Routes>
+   <Route path="welcome" element={<OnboardingPage />} />
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="scan" element={<ScanPage />} />

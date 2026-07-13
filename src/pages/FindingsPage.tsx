@@ -14,6 +14,7 @@ import {
 import { CleanupReviewDialog } from "../components/cleanup/CleanupReviewDialog";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { VirtualizedList } from "../components/ui/VirtualizedList";
 import { commands } from "../ipc/commands";
 import type { RuleCategory } from "../ipc/types";
 import { formatBytes } from "../lib/utils";
@@ -111,15 +112,14 @@ export function FindingsPage() {
         </div>
       )}
 
-      {error ? <Card className="mt-7 border-amber-400/20 p-6" role="alert">{error.message}</Card> : findings.length === 0 ? (
+      {error ? <Card className="mt-7 border-amber-400/20 p-6" role="alert"><p className="font-semibold">Findings could not be loaded</p><p className="mt-2 text-sm text-muted">{error.message}</p>{summary?.scanId && <Button className="mt-4" variant="secondary" onClick={() => void load(summary.scanId)}>Try again</Button>}</Card> : findings.length === 0 ? (
         <Card className="mt-7 grid min-h-80 place-items-center p-10 text-center">
           <div><FolderSearch className="mx-auto text-muted" size={34} /><h2 className="mt-4 font-semibold">No findings yet</h2><p className="mt-2 text-sm text-muted">Run Quick Scan or Developer Scan to inspect known cache locations.</p></div>
         </Card>
       ) : visible.length === 0 ? (
         <Card className="mt-5 p-8 text-center text-sm text-muted">No findings match the current filters.</Card>
       ) : (
-        <div className="mt-5 space-y-3 pb-24">
-          {visible.map((finding) => (
+        <VirtualizedList className="mt-5 space-y-3 pb-24" items={visible} itemKey={(finding) => finding.id} estimateSize={() => 190} label="Scan findings" renderItem={(finding) => (
             <Card key={finding.id} className="p-5 shadow-none">
               <div className="flex items-start gap-4">
                 <input aria-label={`Select ${finding.displayName}`} checked={selected.has(finding.id)} className="mt-3 size-4 accent-emerald-400" disabled={!finding.cleanupAllowed || cleanupBusy} onChange={() => toggle(finding.id)} type="checkbox" />
@@ -129,12 +129,11 @@ export function FindingsPage() {
               </div>
               <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted"><ShieldCheck size={13} />{finding.cleanupAllowed ? "Eligible for an immutable, revalidated Trash plan." : finding.cleanupBlockReason}</div>
             </Card>
-          ))}
-        </div>
+          )} />
       )}
 
       {selected.size > 0 && cleanup.status !== "review" && (
-        <div className="sticky bottom-5 z-20 mt-5 flex items-center justify-between rounded-2xl border border-sage-400/25 bg-[#0a1714]/95 p-4 shadow-2xl backdrop-blur">
+        <div className="sticky bottom-5 z-20 mt-5 flex items-center justify-between rounded-2xl border border-sage-400/25 bg-panel/95 p-4 shadow-2xl backdrop-blur">
           <div><p className="font-semibold">{selected.size} safe {selected.size === 1 ? "item" : "items"} selected</p><p className="mt-1 text-xs text-muted">{formatBytes(selectedBytes)} will be reviewed again before anything moves.</p></div>
           <div className="flex gap-2"><Button disabled={cleanupBusy} onClick={() => createPlan("moveToTrash")}><Trash2 size={16} />{cleanup.status === "planning" ? "Creating plan…" : "Review Trash plan"}</Button>{settings?.permanentDeletionEnabled && <Button disabled={cleanupBusy} onClick={() => createPlan("permanentDelete")} variant="destructive"><Trash2 size={16} />Review permanent delete</Button>}</div>
         </div>

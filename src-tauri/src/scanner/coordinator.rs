@@ -235,6 +235,17 @@ impl ScanManager {
         self.repository.load_summary(scan_id)
     }
 
+    pub fn latest_status(&self) -> Result<Option<ScanSummary>, CommandError> {
+        let statuses = self
+            .statuses
+            .lock()
+            .map_err(|_| CommandError::internal("scan status lock poisoned"))?;
+        Ok(statuses
+            .values()
+            .max_by(|left, right| left.started_at.cmp(&right.started_at))
+            .cloned())
+    }
+
     pub fn repository(&self) -> &ScanRepository {
         &self.repository
     }

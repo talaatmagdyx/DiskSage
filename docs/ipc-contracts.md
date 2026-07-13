@@ -2,11 +2,12 @@
 
 All request structs use strict deserialization with unknown fields denied. Responses use camel-case JSON. Failures use `CommandError`; frontend presentation maps its code to a user-safe message and does not render `details`.
 
-## Registered through Phase 6
+## Registered through Phase 7
 
 | Command | Request | Response | Side effects |
 | --- | --- | --- | --- |
 | `get_app_info` | none | app name, version, platform, destructive capability flag | none |
+| `export_diagnostics` | none | app-cache report path | writes a new redacted JSON report under the app cache and reveals it |
 | `list_disks` | none | flat `DiskInfo[]` | reads mounted-disk metadata |
 | `get_disk_info` | `{ mountPath }` | `DiskInfo` | reads mounted-disk metadata |
 | `get_settings` | none | `AppSettings` | reads app-owned JSON |
@@ -36,6 +37,8 @@ All request structs use strict deserialization with unknown fields denied. Respo
 `permanentDelete` is rejected unless the persisted setting is enabled. It uses the same `create_cleanup_plan` command and cannot introduce paths. Expert-risk permanent plans include a backend-issued confirmation phrase; `execute_cleanup_plan` rejects a missing or mismatched `typedConfirmation`. The frontend also uses the native Tauri confirm dialog, but backend plan validation remains authoritative.
 
 Cleanup execution commands contain only `planId`, `confirmationToken`, and the optional backend-issued expert phrase. Duplicate and Custom scan roots are frontend paths because the user selects analysis scope, but they never authorize mutation. Duplicate cleanup accepts only persisted group/copy identifiers; the backend rejects the keep ID in a Trash set and rejects every selection that would remove all copies.
+
+Diagnostics export accepts no path or content from the frontend. It serializes only version/platform metadata, redacted settings, aggregate disk and scan counts, cleanup outcome counts, and error codes. It omits configured root values, disk names and mount paths, scan IDs, finding paths, cleanup item records, hashes, and file contents.
 
 ## Event contract
 

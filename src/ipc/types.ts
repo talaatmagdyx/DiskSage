@@ -11,7 +11,8 @@ export type DiskInfo = {
 };
 
 export type AppSettings = {
-  schemaVersion: number;
+ schemaVersion: number;
+ onboardingComplete: boolean;
   defaultScanMode: "quick" | "developer" | "fullAnalysis" | "custom";
   followSymlinks: false;
   scanExternalDrives: boolean;
@@ -60,6 +61,7 @@ export type CommandError = {
   path?: string;
   details?: string;
 };
+export type DiagnosticsExport = { path: string };
 
 export type ScanProfileId = "quick" | "developer" | "fullAnalysis" | "custom";
 export type ScanPhase =

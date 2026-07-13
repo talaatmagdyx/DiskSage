@@ -9,7 +9,8 @@ import type {
   DuplicateCleanupPlan,
   DuplicateCleanupSelection,
   DuplicateGroup,
-  DuplicateSummary,
+ DuplicateSummary,
+ DiagnosticsExport,
   Finding,
   ScanProfile,
   ScanProfileId,
@@ -17,6 +18,7 @@ import type {
 } from "./types";
 
 export const commands = {
+ exportDiagnostics: () => invoke<DiagnosticsExport>("export_diagnostics"),
   listDisks: () => invoke<DiskInfo[]>("list_disks"),
   getSettings: () => invoke<AppSettings>("get_settings"),
   updateSettings: (settings: AppSettings) =>

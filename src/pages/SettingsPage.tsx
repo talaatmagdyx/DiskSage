@@ -1,19 +1,42 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, LoaderCircle, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Download, LoaderCircle, Palette, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import type { AppSettings } from "../ipc/types";
 import { useSettingsStore } from "../stores/settingsStore";
+import { commands } from "../ipc/commands";
+import { normalizeCommandError } from "../ipc/errors";
+import { toast } from "../stores/toastStore";
 
 export function SettingsPage() {
   const { settings, status, error, load, save } = useSettingsStore();
   const [draft, setDraft] = useState<AppSettings | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setDraft(settings); }, [settings]);
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const submit = async () => {
+    if (!draft) return;
+    await save(draft);
+    if (useSettingsStore.getState().status === "ready") toast({ tone: "success", title: "Settings saved", message: "Your local preferences are now active." });
+  };
+
+  const exportDiagnostics = async () => {
+    setExporting(true);
+    try {
+      const result = await commands.exportDiagnostics();
+      toast({ tone: "success", title: "Diagnostics exported", message: `A redacted report was created and revealed in Finder: ${result.path}` });
+    } catch (error) {
+      const normalized = normalizeCommandError(error);
+      toast({ tone: "error", title: "Diagnostics export failed", message: normalized.message });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -25,9 +48,9 @@ export function SettingsPage() {
       {status === "loading" && !draft ? (
         <Card className="mt-8 grid min-h-60 place-items-center"><LoaderCircle className="animate-spin text-muted" aria-label="Loading settings" /></Card>
       ) : error && !draft ? (
-        <Card className="mt-8 border-amber-400/20 p-6" role="alert"><p>{error.message}</p></Card>
+        <Card className="mt-8 border-amber-400/20 p-6" role="alert"><p>{error.message}</p><Button className="mt-4" variant="secondary" onClick={() => void load()}><RotateCcw size={16} />Try again</Button></Card>
       ) : draft ? (
-        <form className="mt-8 space-y-5" onSubmit={(event) => { event.preventDefault(); void save(draft); }}>
+        <form className="mt-8 space-y-5" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <Card className="p-6">
             <h2 className="font-semibold">Scan defaults</h2>
             <p className="mt-1 text-sm text-muted">Conservative settings used by future scan phases.</p>
@@ -70,11 +93,18 @@ export function SettingsPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="font-semibold">Privacy and appearance</h2>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="flex items-start gap-3"><Palette className="mt-0.5 text-sage-300" size={19} aria-hidden="true" /><div><h2 className="font-semibold">Appearance and accessibility</h2><p className="mt-1 text-sm text-muted">System follows your operating-system color preference.</p></div></div>
+            <div className="mt-5 grid grid-cols-2 gap-5">
+              <Field label="Theme"><select className="control" value={draft.theme} onChange={(event) => update("theme", event.target.value as AppSettings["theme"])}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></Field>
               <Toggle checked={draft.diagnosticLogging} onChange={(value) => update("diagnosticLogging", value)} label="Diagnostic logging" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <Toggle checked={draft.reducedMotion} onChange={(value) => update("reducedMotion", value)} label="Reduced motion" />
             </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-start justify-between gap-6"><div><h2 className="font-semibold">Privacy and diagnostics</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Export a local JSON report with app and platform details, aggregate counts, error codes, and redacted configuration. File paths, filenames, hashes, file contents, project-root values, and cleanup item details are excluded.</p></div><Button type="button" variant="secondary" disabled={exporting} onClick={() => void exportDiagnostics()}>{exporting ? <LoaderCircle className="animate-spin" size={16} /> : <Download size={16} />}{exporting ? "Exporting…" : "Export diagnostics"}</Button></div>
           </Card>
 
           <Card className="border-amber-400/15 p-6">

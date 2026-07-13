@@ -2,7 +2,7 @@
 
 ## Phase boundary
 
-Phase 6 adds explicitly scoped large/old analysis and a feature-gated permanent executor. Custom analysis roots are read-only authority and produce review-only findings. Permanent deletion remains off by default and can consume only an immutable plan built from cleanup-authorized backend findings. Expert-risk plans require an exact typed phrase in addition to the plan token and native confirmation. Arbitrary path cleanup remains unavailable.
+Phase 7 adds first-run guidance, adaptive appearance, keyboard-first interaction, virtualized large-list presentation, error recovery, and a redacted diagnostics export. Diagnostics are assembled in Rust from typed aggregate fields and written to an app-owned cache directory; configured paths, finding paths, hashes, contents, and cleanup item records are never serialized. The Phase 6 cleanup safety boundary remains unchanged.
 
 ## Trust boundaries
 
@@ -24,6 +24,7 @@ Rust command adapters
         +-- cleanup coordinator (single-use plans and cancellation)
         +-- permanent executor (feature-gated, symlink-rejecting, no retry)
         +-- history repository (local per-item audit records)
+        +-- diagnostics exporter (redacted aggregates -> app cache)
         |
         v
 validated finding/group IDs -> immutable plan -> canonical/content revalidation -> OS Trash
@@ -49,7 +50,7 @@ Permanent execution shares the same plan consumption, protected-path policy, can
 
 ## Frontend state
 
-Disk metadata, settings, scanning, findings, cleanup, and duplicates have independent Zustand stores. The duplicate store owns keep selection and never allows the current keep copy to enter the Trash selection. IPC errors are normalized before reaching presentation components so raw Rust details are not shown in normal UI.
+Disk metadata, settings, scanning, findings, cleanup, duplicates, and transient notifications have independent Zustand stores. The duplicate store owns keep selection and never allows the current keep copy to enter the Trash selection. IPC errors are normalized before reaching presentation components so raw Rust details are not shown in normal UI. Findings and duplicate groups switch to dynamically measured virtual rows above 100 entries.
 
 ## Persistence
 

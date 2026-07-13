@@ -35,6 +35,8 @@ pub enum Theme {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AppSettings {
     pub schema_version: u32,
+    #[serde(default)]
+    pub onboarding_complete: bool,
     pub default_scan_mode: ScanMode,
     pub follow_symlinks: bool,
     pub scan_external_drives: bool,
@@ -65,6 +67,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             schema_version: 1,
+            onboarding_complete: false,
             default_scan_mode: ScanMode::Quick,
             follow_symlinks: false,
             scan_external_drives: false,

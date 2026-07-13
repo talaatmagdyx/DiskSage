@@ -2,6 +2,7 @@ import { AlertTriangle, CopyCheck, ShieldCheck, Trash2, X } from "lucide-react";
 import type { DuplicateCleanupPlan } from "../../ipc/types";
 import { formatBytes } from "../../lib/utils";
 import { Button } from "../ui/Button";
+import { useModalFocus } from "../../hooks/useModalFocus";
 
 type Props = {
   plan: DuplicateCleanupPlan;
@@ -11,9 +12,10 @@ type Props = {
 };
 
 export function DuplicateCleanupDialog({ plan, busy, onCancel, onConfirm }: Props) {
+  const modal = useModalFocus(onCancel, !busy);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6" role="presentation">
-      <section aria-labelledby="duplicate-review-title" aria-modal="true" className="w-full max-w-2xl rounded-2xl border border-line bg-panel p-6 shadow-2xl" role="dialog">
+      <section ref={modal.ref} onKeyDown={modal.onKeyDown} aria-labelledby="duplicate-review-title" aria-modal="true" className="w-full max-w-2xl rounded-2xl border border-line bg-panel p-6 shadow-2xl" role="dialog">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3">
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-sage-400/10 text-sage-300"><CopyCheck size={21} /></div>
