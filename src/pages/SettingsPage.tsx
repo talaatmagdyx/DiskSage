@@ -41,6 +41,12 @@ export function SettingsPage() {
                 <input className="control" type="number" min={1} max={8} value={draft.maximumConcurrency} onChange={(e) => update("maximumConcurrency", Number(e.target.value))} />
               </Field>
             </div>
+            <div className="mt-5 grid grid-cols-4 gap-4">
+              <Field label="Large file (GiB)"><input className="control" type="number" min={0.01} step={0.25} value={draft.largeFileThresholdBytes / 1_073_741_824} onChange={(event) => update("largeFileThresholdBytes", Number(event.target.value) * 1_073_741_824)} /></Field>
+              <Field label="Very large (GiB)"><input className="control" type="number" min={0.02} step={0.5} value={draft.veryLargeFileThresholdBytes / 1_073_741_824} onChange={(event) => update("veryLargeFileThresholdBytes", Number(event.target.value) * 1_073_741_824)} /></Field>
+              <Field label="Huge file (GiB)"><input className="control" type="number" min={0.03} step={1} value={draft.hugeFileThresholdBytes / 1_073_741_824} onChange={(event) => update("hugeFileThresholdBytes", Number(event.target.value) * 1_073_741_824)} /></Field>
+              <Field label="Old installer (days)"><input className="control" type="number" min={30} max={3650} value={draft.oldFileThresholdDays} onChange={(event) => update("oldFileThresholdDays", Number(event.target.value))} /></Field>
+            </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <Toggle checked={draft.scanHiddenFiles} onChange={(value) => update("scanHiddenFiles", value)} label="Include hidden files" />
               <Toggle checked={draft.scanExternalDrives} onChange={(value) => update("scanExternalDrives", value)} label="Include external drives" />
@@ -76,13 +82,13 @@ export function SettingsPage() {
               <AlertTriangle className="mt-0.5 text-amber-300" size={19} aria-hidden="true" />
               <div>
                 <h2 className="font-semibold">Advanced cleanup</h2>
-                <p className="mt-1 text-sm leading-6 text-muted">Permanent deletion is disabled and no permanent-delete command exists in this build.</p>
+                <p className="mt-1 text-sm leading-6 text-muted">Permanent deletion bypasses Trash and cannot be undone. It still requires an immutable plan, native confirmation, and immediate backend revalidation.</p>
               </div>
             </div>
             <div className="mt-4">
-              <Toggle checked={draft.permanentDeletionEnabled} onChange={(value) => update("permanentDeletionEnabled", value)} label="Record permanent-deletion preference for a future release" />
+              <Toggle checked={draft.permanentDeletionEnabled} onChange={(value) => update("permanentDeletionEnabled", value)} label="Enable permanent deletion" />
             </div>
-            {draft.permanentDeletionEnabled && <p className="mt-3 rounded-xl bg-amber-300/10 p-3 text-xs leading-5 text-amber-100" role="status">Warning: permanent deletion cannot be undone. Enabling this preference does not add or execute destructive functionality.</p>}
+            {draft.permanentDeletionEnabled && <p className="mt-3 rounded-xl border border-red-400/25 bg-red-400/10 p-3 text-xs leading-5 text-red-100" role="status">Warning: a separate permanent-delete action will appear for cleanup-authorized findings. Expert-risk plans additionally require an exact typed phrase. No item is deleted when this setting is enabled.</p>}
           </Card>
 
           {error && <p className="text-sm text-amber-100" role="alert">{error.message}</p>}

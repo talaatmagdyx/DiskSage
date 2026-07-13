@@ -29,7 +29,7 @@ export async function listenForScanEvents(): Promise<UnlistenFn> {
     listen<CleanupSummary>("cleanup://completed", ({ payload }) => {
       useCleanupStore.getState().handleSummary(payload);
       useFindingsStore.getState().remove(
-        payload.items.filter((item) => item.status === "movedToTrash").map((item) => item.findingId),
+        payload.items.filter((item) => item.status === "movedToTrash" || item.status === "permanentlyDeleted").map((item) => item.findingId),
       );
     }),
     listen<CommandError>("cleanup://failed", ({ payload }) => useCleanupStore.getState().handleFailure(payload)),

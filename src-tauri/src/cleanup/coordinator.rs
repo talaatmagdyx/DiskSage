@@ -23,7 +23,7 @@ use crate::{
     scanner::cancellation::CancellationToken,
 };
 
-use super::{revalidation, trash_executor};
+use super::{permanent_executor, revalidation, trash_executor};
 
 const PLAN_LIFETIME_MINUTES: i64 = 15;
 
@@ -59,11 +59,12 @@ impl CleanupManager {
         request: CreateCleanupPlanRequest,
         home: &Path,
         platform: &str,
+        permanent_deletion_enabled: bool,
     ) -> Result<CleanupPlan, CommandError> {
-        if request.action != CleanupAction::MoveToTrash {
+        if request.action == CleanupAction::PermanentDelete && !permanent_deletion_enabled {
             return Err(CommandError::new(
                 ErrorCode::CommandUnavailable,
-                "Permanent deletion is disabled. Move to Trash is the only cleanup action.",
+                "Permanent deletion is disabled in Settings.",
                 true,
             ));
         }
@@ -111,15 +112,19 @@ impl CleanupManager {
         }
 
         let created_at = Utc::now();
+        let required_confirmation_phrase = (request.action == CleanupAction::PermanentDelete
+            && risk_summary.expert > 0)
+            .then(|| format!("DELETE {} EXPERT ITEMS", risk_summary.expert));
         let plan = CleanupPlan {
             id: Uuid::new_v4().to_string(),
             created_at,
             expires_at: created_at + Duration::minutes(PLAN_LIFETIME_MINUTES),
-            action: CleanupAction::MoveToTrash,
+            action: request.action,
             items,
             expected_reclaimable_bytes,
             risk_summary,
             confirmation_token: Uuid::new_v4().to_string(),
+            required_confirmation_phrase,
         };
         let mut plans = self
             .plans
@@ -143,6 +148,7 @@ impl CleanupManager {
         request: ExecuteCleanupRequest,
         home: PathBuf,
         platform: &'static str,
+        permanent_deletion_enabled: bool,
     ) -> Result<String, CommandError> {
         let mut active = self
             .active
@@ -155,7 +161,7 @@ impl CleanupManager {
                 true,
             ));
         }
-        let plan = self.consume_plan(&request)?;
+        let plan = self.consume_plan(&request, permanent_deletion_enabled)?;
         let operation_id = Uuid::new_v4().to_string();
         let cancellation = CancellationToken::default();
         *active = Some(ActiveCleanup {
@@ -219,7 +225,11 @@ impl CleanupManager {
         self.history_repository.clear()
     }
 
-    fn consume_plan(&self, request: &ExecuteCleanupRequest) -> Result<CleanupPlan, CommandError> {
+    fn consume_plan(
+        &self,
+        request: &ExecuteCleanupRequest,
+        permanent_deletion_enabled: bool,
+    ) -> Result<CleanupPlan, CommandError> {
         Uuid::parse_str(&request.plan_id).map_err(|_| {
             CommandError::new(
                 ErrorCode::PlanValidationFailed,
@@ -259,12 +269,28 @@ impl CleanupManager {
                 true,
             ));
         }
+        if plan.action == CleanupAction::PermanentDelete && !permanent_deletion_enabled {
+            return Err(CommandError::new(
+                ErrorCode::CommandUnavailable,
+                "Permanent deletion was disabled after this plan was created.",
+                true,
+            ));
+        }
         if request.confirmation_token != plan.confirmation_token {
             return Err(CommandError::new(
                 ErrorCode::PlanValidationFailed,
                 "Cleanup confirmation did not match the reviewed plan.",
                 false,
             ));
+        }
+        if let Some(required) = &plan.required_confirmation_phrase {
+            if request.typed_confirmation.as_deref() != Some(required.as_str()) {
+                return Err(CommandError::new(
+                    ErrorCode::PlanValidationFailed,
+                    "The expert permanent-delete confirmation phrase did not match.",
+                    false,
+                ));
+            }
         }
         plans.remove(&request.plan_id);
         let mut consumed = self
@@ -323,13 +349,20 @@ impl CleanupManager {
                     &cancellation,
                 ) {
                     Err(error) => skipped_result(item, &home, error),
-                    Ok(()) => match trash_executor::move_to_trash(&item.path) {
-                        Ok(()) => CleanupItemResult {
+                    Ok(()) => match match plan.action {
+                        CleanupAction::MoveToTrash => trash_executor::move_to_trash(&item.path)
+                            .map(|()| CleanupItemStatus::MovedToTrash),
+                        CleanupAction::PermanentDelete => {
+                            permanent_executor::permanently_delete(&item.path, item.expected_type)
+                                .map(|()| CleanupItemStatus::PermanentlyDeleted)
+                        }
+                    } {
+                        Ok(status) => CleanupItemResult {
                             finding_id: item.finding_id.clone(),
                             rule_id: item.rule_id.clone(),
                             display_path: display_path(&item.path, &home),
                             expected_bytes: item.expected_size,
-                            status: CleanupItemStatus::MovedToTrash,
+                            status,
                             error: None,
                         },
                         Err(error) => CleanupItemResult {
@@ -346,7 +379,9 @@ impl CleanupManager {
             progress.completed_items += 1;
             progress.processed_bytes = progress.processed_bytes.saturating_add(item.expected_size);
             match result.status {
-                CleanupItemStatus::MovedToTrash => progress.success_count += 1,
+                CleanupItemStatus::MovedToTrash | CleanupItemStatus::PermanentlyDeleted => {
+                    progress.success_count += 1
+                }
                 CleanupItemStatus::Failed => progress.failure_count += 1,
                 CleanupItemStatus::Skipped => progress.skipped_count += 1,
             }
@@ -463,6 +498,7 @@ mod tests {
             expected_reclaimable_bytes: 0,
             risk_summary: RiskSummary::default(),
             confirmation_token: Uuid::new_v4().to_string(),
+            required_confirmation_phrase: None,
         }
     }
 
@@ -528,16 +564,30 @@ mod tests {
             .create_plan(
                 CreateCleanupPlanRequest {
                     scan_id,
-                    finding_ids: vec![finding_id],
+                    finding_ids: vec![finding_id.clone()],
                     action: CleanupAction::MoveToTrash,
                 },
                 &home,
                 "linux",
+                false,
             )
             .unwrap();
         assert_eq!(plan.items.len(), 1);
         assert_eq!(plan.risk_summary.safe, 1);
         assert_eq!(plan.items[0].canonical_path, path.canonicalize().unwrap());
+        let permanent_plan = manager
+            .create_plan(
+                CreateCleanupPlanRequest {
+                    scan_id: plan.items[0].scan_id.clone(),
+                    finding_ids: vec![finding_id],
+                    action: CleanupAction::PermanentDelete,
+                },
+                &home,
+                "linux",
+                true,
+            )
+            .unwrap();
+        assert_eq!(permanent_plan.action, CleanupAction::PermanentDelete);
     }
 
     #[test]
@@ -546,8 +596,9 @@ mod tests {
         let request = ExecuteCleanupRequest {
             plan_id: Uuid::new_v4().to_string(),
             confirmation_token: Uuid::new_v4().to_string(),
+            typed_confirmation: None,
         };
-        assert!(manager.consume_plan(&request).is_err());
+        assert!(manager.consume_plan(&request, false).is_err());
     }
 
     #[test]
@@ -562,6 +613,7 @@ mod tests {
                 },
                 Path::new("/home/alex"),
                 "linux",
+                false,
             )
             .unwrap_err();
         assert_eq!(error.code, ErrorCode::CommandUnavailable);
@@ -579,10 +631,11 @@ mod tests {
         let request = ExecuteCleanupRequest {
             plan_id: plan.id,
             confirmation_token: plan.confirmation_token,
+            typed_confirmation: None,
         };
-        manager.consume_plan(&request).unwrap();
+        manager.consume_plan(&request, false).unwrap();
         assert_eq!(
-            manager.consume_plan(&request).unwrap_err().code,
+            manager.consume_plan(&request, false).unwrap_err().code,
             ErrorCode::PlanValidationFailed
         );
     }
@@ -599,10 +652,57 @@ mod tests {
         let request = ExecuteCleanupRequest {
             plan_id: plan.id,
             confirmation_token: plan.confirmation_token,
+            typed_confirmation: None,
         };
         assert_eq!(
-            manager.consume_plan(&request).unwrap_err().code,
+            manager.consume_plan(&request, false).unwrap_err().code,
             ErrorCode::PlanExpired
+        );
+    }
+
+    #[test]
+    fn expert_permanent_delete_requires_the_exact_typed_phrase() {
+        let manager = manager();
+        let mut plan = plan(Utc::now() + Duration::minutes(1));
+        plan.action = CleanupAction::PermanentDelete;
+        plan.risk_summary.expert = 2;
+        plan.required_confirmation_phrase = Some("DELETE 2 EXPERT ITEMS".to_owned());
+        manager
+            .plans
+            .lock()
+            .unwrap()
+            .insert(plan.id.clone(), plan.clone());
+        let mut request = ExecuteCleanupRequest {
+            plan_id: plan.id,
+            confirmation_token: plan.confirmation_token,
+            typed_confirmation: None,
+        };
+        assert_eq!(
+            manager.consume_plan(&request, true).unwrap_err().code,
+            ErrorCode::PlanValidationFailed
+        );
+        request.typed_confirmation = Some("DELETE 2 EXPERT ITEMS".to_owned());
+        manager.consume_plan(&request, true).unwrap();
+    }
+
+    #[test]
+    fn permanent_plan_cannot_execute_after_feature_is_disabled() {
+        let manager = manager();
+        let mut plan = plan(Utc::now() + Duration::minutes(1));
+        plan.action = CleanupAction::PermanentDelete;
+        manager
+            .plans
+            .lock()
+            .unwrap()
+            .insert(plan.id.clone(), plan.clone());
+        let request = ExecuteCleanupRequest {
+            plan_id: plan.id,
+            confirmation_token: plan.confirmation_token,
+            typed_confirmation: None,
+        };
+        assert_eq!(
+            manager.consume_plan(&request, false).unwrap_err().code,
+            ErrorCode::CommandUnavailable
         );
     }
 }

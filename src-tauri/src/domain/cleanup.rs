@@ -47,6 +47,7 @@ pub struct CleanupPlan {
     pub expected_reclaimable_bytes: u64,
     pub risk_summary: RiskSummary,
     pub confirmation_token: String,
+    pub required_confirmation_phrase: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -62,6 +63,7 @@ pub struct CreateCleanupPlanRequest {
 pub struct ExecuteCleanupRequest {
     pub plan_id: String,
     pub confirmation_token: String,
+    pub typed_confirmation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -80,6 +82,7 @@ pub struct CancelCleanupRequest {
 #[serde(rename_all = "camelCase")]
 pub enum CleanupItemStatus {
     MovedToTrash,
+    PermanentlyDeleted,
     Skipped,
     Failed,
 }

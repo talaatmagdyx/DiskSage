@@ -10,6 +10,7 @@ const buttonVariants = cva(
         primary: "bg-sage-400 px-4 py-2.5 text-sage-900 hover:bg-sage-300",
         secondary: "border border-line bg-white/5 px-4 py-2.5 text-ink hover:bg-white/10",
         ghost: "px-3 py-2 text-muted hover:bg-white/5 hover:text-ink",
+        destructive: "bg-red-600 px-4 py-2.5 text-white hover:bg-red-500",
       },
     },
     defaultVariants: { variant: "primary" },
@@ -25,4 +26,3 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
-

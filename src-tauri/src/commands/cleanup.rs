@@ -21,9 +21,18 @@ pub fn create_cleanup_plan(
         .path()
         .home_dir()
         .map_err(|error| CommandError::internal(error.to_string()))?;
-    state
-        .cleanup_manager
-        .create_plan(request, &home, std::env::consts::OS)
+    let permanent_deletion_enabled = state
+        .settings_repository
+        .lock()
+        .map_err(|_| CommandError::internal("settings lock poisoned"))?
+        .load()?
+        .permanent_deletion_enabled;
+    state.cleanup_manager.create_plan(
+        request,
+        &home,
+        std::env::consts::OS,
+        permanent_deletion_enabled,
+    )
 }
 
 #[tauri::command]
@@ -36,9 +45,19 @@ pub fn execute_cleanup_plan(
         .path()
         .home_dir()
         .map_err(|error| CommandError::internal(error.to_string()))?;
-    let operation_id = state
-        .cleanup_manager
-        .execute(app, request, home, std::env::consts::OS)?;
+    let permanent_deletion_enabled = state
+        .settings_repository
+        .lock()
+        .map_err(|_| CommandError::internal("settings lock poisoned"))?
+        .load()?
+        .permanent_deletion_enabled;
+    let operation_id = state.cleanup_manager.execute(
+        app,
+        request,
+        home,
+        std::env::consts::OS,
+        permanent_deletion_enabled,
+    )?;
     Ok(ExecuteCleanupResponse { operation_id })
 }
 

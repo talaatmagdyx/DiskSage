@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::error::CommandError;
+use super::{error::CommandError, rule::RuleCategory};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +77,19 @@ pub struct StartScanRequest {
     pub profile: ScanProfileId,
     #[serde(default)]
     pub excluded_paths: Vec<String>,
+    #[serde(default)]
+    pub custom: Option<CustomScanOptions>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CustomScanOptions {
+    pub roots: Vec<String>,
+    pub enabled_categories: Vec<RuleCategory>,
+    pub minimum_file_size_bytes: u64,
+    pub maximum_depth: u16,
+    pub include_hidden_files: bool,
+    pub include_external_drives: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

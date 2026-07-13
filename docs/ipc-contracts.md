@@ -2,7 +2,7 @@
 
 All request structs use strict deserialization with unknown fields denied. Responses use camel-case JSON. Failures use `CommandError`; frontend presentation maps its code to a user-safe message and does not render `details`.
 
-## Registered through Phase 5
+## Registered through Phase 6
 
 | Command | Request | Response | Side effects |
 | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ All request structs use strict deserialization with unknown fields denied. Respo
 | `get_settings` | none | `AppSettings` | reads app-owned JSON |
 | `update_settings` | `{ settings }` | validated `AppSettings` | atomically writes app-owned JSON |
 | `get_scan_profiles` | none | `ScanProfile[]` | none |
-| `start_scan` | `{ profile, excludedPaths }` | opaque scan ID | starts one backend-owned targeted worker |
+| `start_scan` | `{ profile, excludedPaths, custom? }` | opaque scan ID | starts one backend-owned targeted or explicitly scoped analysis worker |
 | `cancel_scan` | `{ scanId }` | none | signals the matching cancellation token |
 | `get_scan_status` | `{ scanId }` | `ScanSummary` | reads app-owned status |
 | `get_scan_findings` | `{ scanId, offset, limit }` | flat `Finding[]` | pages app-owned NDJSON |
@@ -31,11 +31,11 @@ All request structs use strict deserialization with unknown fields denied. Respo
 | `execute_duplicate_cleanup_plan` | `{ planId, confirmationToken }` | opaque operation ID | consumes the plan once, re-hashes, then starts Trash operations |
 | `cancel_duplicate_cleanup` | `{ operationId }` | none | skips remaining planned copies |
 
-## Deliberately unavailable
+## Destructive gate
 
-Permanent deletion and expert cleanup have no executable command path. The action enum is retained as a versioned contract, but plan creation rejects every action except `moveToTrash`.
+`permanentDelete` is rejected unless the persisted setting is enabled. It uses the same `create_cleanup_plan` command and cannot introduce paths. Expert-risk permanent plans include a backend-issued confirmation phrase; `execute_cleanup_plan` rejects a missing or mismatched `typedConfirmation`. The frontend also uses the native Tauri confirm dialog, but backend plan validation remains authoritative.
 
-Cleanup execution commands contain only `planId` and `confirmationToken`. Duplicate scan roots are frontend paths because the user selects analysis scope, but they never authorize mutation. Duplicate cleanup accepts only persisted group/copy identifiers; the backend rejects the keep ID in a Trash set and rejects every selection that would remove all copies.
+Cleanup execution commands contain only `planId`, `confirmationToken`, and the optional backend-issued expert phrase. Duplicate and Custom scan roots are frontend paths because the user selects analysis scope, but they never authorize mutation. Duplicate cleanup accepts only persisted group/copy identifiers; the backend rejects the keep ID in a Trash set and rejects every selection that would remove all copies.
 
 ## Event contract
 

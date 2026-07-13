@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { commands } from "../ipc/commands";
 import { normalizeCommandError } from "../ipc/errors";
-import type { CommandError, ScanProfile, ScanProfileId, ScanProgress, ScanSummary } from "../ipc/types";
+import type { CommandError, CustomScanOptions, ScanProfile, ScanProfileId, ScanProgress, ScanSummary } from "../ipc/types";
 import { useFindingsStore } from "./findingsStore";
 
 type ScanState = {
@@ -12,7 +12,7 @@ type ScanState = {
   summary: ScanSummary | null;
   error: CommandError | null;
   loadProfiles: () => Promise<void>;
-  start: (profile: ScanProfileId) => Promise<void>;
+  start: (profile: ScanProfileId, excludedPaths?: string[], custom?: CustomScanOptions) => Promise<void>;
   cancel: () => Promise<void>;
   handleProgress: (progress: ScanProgress) => void;
   handleSummary: (summary: ScanSummary) => void;
@@ -33,11 +33,11 @@ export const useScanStore = create<ScanState>((set, get) => ({
       set({ status: "error", error: normalizeCommandError(error) });
     }
   },
-  start: async (profile) => {
+  start: async (profile, excludedPaths = [], custom) => {
     useFindingsStore.getState().reset();
     set({ status: "starting", error: null, progress: null, summary: null });
     try {
-      const { scanId } = await commands.startScan(profile);
+      const { scanId } = await commands.startScan(profile, excludedPaths, custom);
       useFindingsStore.getState().reset(scanId);
       set({ scanId, status: "running" });
     } catch (error) {

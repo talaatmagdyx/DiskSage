@@ -11,6 +11,8 @@
 7. Every plan item is revalidated immediately before execution; a changed or unverifiable item is skipped.
 8. Partial failure is reported per item and never converted to success.
 9. Duplicate cleanup can never select the keep copy and can never remove every copy in a group.
+10. Permanent deletion remains disabled by default, is a separate action, and is never retried automatically.
+11. Expert-risk permanent deletion requires the exact backend-issued typed phrase.
 
 ## Protected roots
 
@@ -36,9 +38,11 @@ selected finding IDs
   -> independently trash eligible items
 ```
 
-The cleanup executor never accepts `Vec<String>` paths from IPC. Plans expire after 15 minutes and are consumed once. Permanent deletion remains rejected by the backend and will require a separate future security gate.
+The cleanup executor never accepts `Vec<String>` paths from IPC. Plans expire after 15 minutes and are consumed once. Permanent deletion is rejected unless the persisted feature flag is enabled both when the plan is created and when it executes. Enabling it does not select or delete anything; the user must separately request and review a permanent plan, pass native confirmation, and execute its single-use token. Expert plans add an exact typed phrase.
 
 Duplicate scan roots are the deliberate exception for read-only analysis: the native picker returns absolute folders, which the backend canonicalizes, narrows, and rejects when they are filesystem, home, credential, symlink, or system roots. These paths do not authorize cleanup. Duplicate cleanup resolves paths only from persisted group and copy IDs, freezes both keep and Trash paths, and verifies size, modification time, canonical resolution, and full BLAKE3 content before every move. Protected Documents, Desktop, Pictures, Movies, and Music locations remain analysis-only.
+
+Custom scan roots follow the same read-only root validation. Large files and old installers are marked Careful, recommended for review only, excluded from reclaimable totals, and never cleanup-authorized. Source files, documents, photos, videos, databases, backups, and general archives are not classified as old-file cleanup candidates.
 
 ## Risk defaults
 

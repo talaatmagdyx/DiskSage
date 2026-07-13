@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { commands } from "../ipc/commands";
 import type { CleanupPlan, CleanupSummary } from "../ipc/types";
 import { useCleanupStore } from "./cleanupStore";
+import { confirm } from "@tauri-apps/plugin-dialog";
 
 vi.mock("../ipc/commands", () => ({
   commands: {
@@ -10,6 +11,7 @@ vi.mock("../ipc/commands", () => ({
     cancelCleanup: vi.fn(),
   },
 }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ confirm: vi.fn() }));
 
 const plan: CleanupPlan = {
   id: "plan-1",
@@ -37,7 +39,7 @@ describe("cleanupStore", () => {
     expect(commands.executeCleanupPlan).not.toHaveBeenCalled();
 
     await useCleanupStore.getState().executePlan();
-    expect(commands.executeCleanupPlan).toHaveBeenCalledWith("plan-1", "confirmation-1");
+    expect(commands.executeCleanupPlan).toHaveBeenCalledWith("plan-1", "confirmation-1", undefined);
     expect(useCleanupStore.getState()).toMatchObject({ status: "running", operationId: "operation-1" });
   });
 
@@ -60,5 +62,25 @@ describe("cleanupStore", () => {
     };
     useCleanupStore.getState().handleSummary(summary);
     expect(useCleanupStore.getState().summary).toMatchObject({ successCount: 1, failureCount: 1, skippedCount: 1 });
+  });
+
+  it("requires a native confirmation before permanent deletion", async () => {
+    const permanentPlan: CleanupPlan = {
+      ...plan,
+      action: "permanentDelete",
+      requiredConfirmationPhrase: "DELETE 1 EXPERT ITEMS",
+      riskSummary: { safe: 0, careful: 0, expert: 1 },
+    };
+    vi.mocked(commands.createCleanupPlan).mockResolvedValue(permanentPlan);
+    vi.mocked(commands.executeCleanupPlan).mockResolvedValue({ operationId: "operation-2" });
+    vi.mocked(confirm).mockResolvedValue(true);
+    await useCleanupStore.getState().createPlan("scan-1", ["finding-1"], "permanentDelete");
+    await useCleanupStore.getState().executePlan("DELETE 1 EXPERT ITEMS");
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(commands.executeCleanupPlan).toHaveBeenCalledWith(
+      "plan-1",
+      "confirmation-1",
+      "DELETE 1 EXPERT ITEMS",
+    );
   });
 });

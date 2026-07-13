@@ -373,7 +373,9 @@ impl DuplicateCleanupManager {
             progress.completed_items += 1;
             progress.processed_bytes = progress.processed_bytes.saturating_add(item.expected_size);
             match result.status {
-                CleanupItemStatus::MovedToTrash => progress.success_count += 1,
+                CleanupItemStatus::MovedToTrash | CleanupItemStatus::PermanentlyDeleted => {
+                    progress.success_count += 1
+                }
                 CleanupItemStatus::Skipped => progress.skipped_count += 1,
                 CleanupItemStatus::Failed => progress.failure_count += 1,
             }

@@ -26,6 +26,10 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 | Same-size but different files | Sparse hash filter followed by full BLAKE3; optional byte-for-byte verification |
 | Duplicate plan removes every copy | Backend validates keep membership and requires Trash count below copy count |
 | Keep or duplicate changes after review | Re-hash keep and target, recheck metadata/canonical paths, then skip on mismatch |
+| Permanent deletion accidentally enabled | Persisted feature flag defaults off; enabling does not create or execute a plan |
+| Destructive action confused with Trash | Separate red action, immutable action field, native confirmation, detailed history |
+| Expert confirmation bypass | Backend-issued exact phrase validated before the plan is consumed |
+| Destructive transient failure | One attempt only; record per-item failure and do not retry |
 | Partial permission or trash failure | Per-item result, continue safely, structured recoverable error |
 | Data exfiltration | No network service, strict CSP, no remote scripts, local-only persistence |
 | Shell injection | No shell capability; future controlled commands use executable + fixed argument arrays |
@@ -34,7 +38,7 @@ The model covers a compromised or buggy frontend, malicious path input, traversa
 
 ## Current attack surface
 
-The capability file grants Tauri core defaults plus the native directory-open dialog. It does not grant shell or frontend filesystem mutation. Custom cleanup IPC accepts backend-owned IDs for planning and a backend-issued plan ID plus token for execution. The only executor uses the operating system Trash; permanent deletion is rejected.
+The capability file grants Tauri core defaults plus native directory-open and confirmation dialogs. It does not grant shell or frontend filesystem mutation. Custom cleanup IPC accepts backend-owned IDs for planning and a backend-issued plan ID plus token for execution. Trash remains the default; the permanent executor is backend-only and feature-gated.
 
 ## Security gates for later phases
 

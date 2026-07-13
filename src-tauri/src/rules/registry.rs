@@ -37,8 +37,8 @@ impl RulesRegistry {
                         | "cache.browser.chrome-v1"
                         | "cache.browser.firefox-v1"
                 ),
-                ScanProfileId::Developer => true,
-                ScanProfileId::FullAnalysis | ScanProfileId::Custom => false,
+                ScanProfileId::Developer | ScanProfileId::FullAnalysis => true,
+                ScanProfileId::Custom => false,
             })
             .map(|rule| {
                 let relative = if platform == "macos" {
@@ -74,7 +74,10 @@ impl RulesRegistry {
         configured_project_roots: &[PathBuf],
     ) -> Vec<ResolvedRule> {
         let mut rules = self.rules_for(profile, home, platform);
-        if profile != ScanProfileId::Developer {
+        if !matches!(
+            profile,
+            ScanProfileId::Developer | ScanProfileId::FullAnalysis
+        ) {
             return rules;
         }
         rules.extend(developer_tools::catalog().into_iter().filter_map(|spec| {

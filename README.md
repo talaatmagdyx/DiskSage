@@ -2,7 +2,7 @@
 
 DiskSage is a local-first macOS and Linux desktop application for understanding disk usage and reviewing safe cleanup recommendations. Safety takes precedence over maximum cleanup.
 
-This repository currently implements Phase 0 through Phase 5's duplicate analysis and trash-first cleanup workflow:
+This repository currently implements Phase 0 through Phase 6's advanced analysis and feature-gated cleanup workflow:
 
 - Tauri 2 + Rust desktop foundation
 - React 18, TypeScript, Vite, TailwindCSS, shadcn-compatible component setup, routing, and Zustand
@@ -29,8 +29,12 @@ This repository currently implements Phase 0 through Phase 5's duplicate analysi
 - Staged duplicate detection by size, sparse BLAKE3 sampling, full BLAKE3, and optional byte verification
 - Cancellable hashing progress with local duplicate-group persistence and deterministic keep recommendations
 - Duplicate cleanup plans that re-hash every path and enforce at least one surviving copy per group
+- Full and Custom scan profiles with explicit roots, depth, exclusions, and category controls
+- Review-only large-file and old-installer analysis with configurable thresholds
+- Permanent deletion feature flag that remains disabled by default
+- Native destructive confirmation, expert typed phrase enforcement, and no-retry permanent execution
 
-Permanent deletion remains intentionally unavailable. Cleanup moves only backend-authorized safe caches or content-verified duplicate copies to the operating system Trash; protected user-content roots remain blocked.
+Permanent deletion is intentionally disabled by default. When explicitly enabled, it remains limited to backend-authorized findings, requires an immutable plan plus native confirmation, and revalidates immediately before a single no-retry deletion attempt. Protected paths remain blocked.
 
 ## Development
 

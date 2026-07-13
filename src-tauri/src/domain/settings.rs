@@ -41,6 +41,12 @@ pub struct AppSettings {
     pub scan_hidden_files: bool,
     pub maximum_concurrency: u8,
     pub large_file_threshold_bytes: u64,
+    #[serde(default = "default_very_large_file_threshold")]
+    pub very_large_file_threshold_bytes: u64,
+    #[serde(default = "default_huge_file_threshold")]
+    pub huge_file_threshold_bytes: u64,
+    #[serde(default = "default_old_file_threshold_days")]
+    pub old_file_threshold_days: u32,
     pub duplicate_minimum_size_bytes: u64,
     pub duplicate_verification_mode: DuplicateVerificationMode,
     pub move_to_trash_by_default: bool,
@@ -65,6 +71,9 @@ impl Default for AppSettings {
             scan_hidden_files: false,
             maximum_concurrency: 3,
             large_file_threshold_bytes: 1_073_741_824,
+            very_large_file_threshold_bytes: default_very_large_file_threshold(),
+            huge_file_threshold_bytes: default_huge_file_threshold(),
+            old_file_threshold_days: default_old_file_threshold_days(),
             duplicate_minimum_size_bytes: 1_048_576,
             duplicate_verification_mode: DuplicateVerificationMode::FullHash,
             move_to_trash_by_default: true,
@@ -117,6 +126,22 @@ impl AppSettings {
                 true,
             ));
         }
+        if self.very_large_file_threshold_bytes <= self.large_file_threshold_bytes
+            || self.huge_file_threshold_bytes <= self.very_large_file_threshold_bytes
+        {
+            return Err(CommandError::new(
+                ErrorCode::InvalidSettings,
+                "Large-file thresholds must increase from large to very large to huge.",
+                true,
+            ));
+        }
+        if !(30..=3_650).contains(&self.old_file_threshold_days) {
+            return Err(CommandError::new(
+                ErrorCode::InvalidSettings,
+                "Old-file age must be between 30 days and 10 years.",
+                true,
+            ));
+        }
         if self.duplicate_minimum_size_bytes < 1_024 {
             return Err(CommandError::new(
                 ErrorCode::InvalidSettings,
@@ -153,6 +178,18 @@ impl AppSettings {
     }
 }
 
+fn default_very_large_file_threshold() -> u64 {
+    5 * 1_073_741_824
+}
+
+fn default_huge_file_threshold() -> u64 {
+    20 * 1_073_741_824
+}
+
+fn default_old_file_threshold_days() -> u32 {
+    365
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,5 +206,14 @@ mod tests {
                 ErrorCode::InvalidSettings
             );
         }
+    }
+
+    #[test]
+    fn destructive_defaults_remain_off_and_thresholds_are_ordered() {
+        let settings = AppSettings::default();
+        assert!(!settings.permanent_deletion_enabled);
+        assert!(settings.large_file_threshold_bytes < settings.very_large_file_threshold_bytes);
+        assert!(settings.very_large_file_threshold_bytes < settings.huge_file_threshold_bytes);
+        settings.validate().unwrap();
     }
 }

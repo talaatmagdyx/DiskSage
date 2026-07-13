@@ -2,7 +2,7 @@
 
 ## Phase boundary
 
-Phase 5 adds explicitly scoped duplicate analysis while preserving Phase 3's Trash boundary. Duplicate candidates pass size grouping, sparse content sampling, full BLAKE3 hashing, and optional byte verification. Duplicate cleanup uses a separate immutable plan whose backend-owned group IDs, keep IDs, and copy IDs guarantee at least one survivor. Permanent deletion, expert cleanup, and arbitrary path cleanup remain unavailable.
+Phase 6 adds explicitly scoped large/old analysis and a feature-gated permanent executor. Custom analysis roots are read-only authority and produce review-only findings. Permanent deletion remains off by default and can consume only an immutable plan built from cleanup-authorized backend findings. Expert-risk plans require an exact typed phrase in addition to the plan token and native confirmation. Arbitrary path cleanup remains unavailable.
 
 ## Trust boundaries
 
@@ -22,6 +22,7 @@ Rust command adapters
         +-- duplicate coordinator (staged hashing + cancellation)
         +-- duplicate repository (flat local group pages)
         +-- cleanup coordinator (single-use plans and cancellation)
+        +-- permanent executor (feature-gated, symlink-rejecting, no retry)
         +-- history repository (local per-item audit records)
         |
         v
@@ -39,9 +40,12 @@ The frontend is not trusted to authorize a cleanup path. Rule cleanup contains b
 - `safety`: protected-path policy and exact known-rule allowlisting.
 - `cleanup`: plan coordination, revalidation, and OS Trash adapter.
 - `duplicates`: root validation, staged hashing, deterministic keep selection, and keep-one cleanup coordination.
+- `scanner::analysis`: bounded custom-root traversal for review-only large files and old installers.
 - `observability`: structured logs with conservative production filters.
 
 Heavy filesystem work runs outside Tauri's main thread. Scanners use bounded depth-first directory stacks, do not follow symlinks or cross devices, and check cancellation between entries and hashing chunks. Duplicate analysis retains only file metadata up to a hard candidate ceiling, eliminates unique sizes before hashing, and persists final groups as NDJSON.
+
+Permanent execution shares the same plan consumption, protected-path policy, canonical/type/size/mtime revalidation, cancellation, per-item results, disk refresh, and audit history as Trash. It adds a final symlink/type check inside the executor and never retries a destructive failure.
 
 ## Frontend state
 

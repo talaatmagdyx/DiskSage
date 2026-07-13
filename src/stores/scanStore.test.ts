@@ -62,5 +62,22 @@ describe("scanStore", () => {
     expect(useScanStore.getState().status).toBe("completed");
     expect(commands.getScanFindings).toHaveBeenCalledWith("scan-1", 0, 500);
   });
-});
 
+  it("forwards explicit roots and bounded options for Custom Scan", async () => {
+    vi.mocked(commands.startScan).mockResolvedValue({ scanId: "custom-1" });
+    const custom = {
+      roots: ["/tmp/selected"],
+      enabledCategories: ["largeFile" as const, "oldFile" as const],
+      minimumFileSizeBytes: 1_048_576,
+      maximumDepth: 12,
+      includeHiddenFiles: false,
+      includeExternalDrives: false,
+    };
+    await useScanStore.getState().start("custom", ["/tmp/selected/skip"], custom);
+    expect(commands.startScan).toHaveBeenCalledWith(
+      "custom",
+      ["/tmp/selected/skip"],
+      custom,
+    );
+  });
+});

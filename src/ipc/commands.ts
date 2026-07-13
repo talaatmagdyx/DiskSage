@@ -3,6 +3,8 @@ import type {
   AppSettings,
   CleanupPlan,
   CleanupSummary,
+  CleanupAction,
+  CustomScanOptions,
   DiskInfo,
   DuplicateCleanupPlan,
   DuplicateCleanupSelection,
@@ -20,8 +22,8 @@ export const commands = {
   updateSettings: (settings: AppSettings) =>
     invoke<AppSettings>("update_settings", { request: { settings } }),
   getScanProfiles: () => invoke<ScanProfile[]>("get_scan_profiles"),
-  startScan: (profile: ScanProfileId, excludedPaths: string[] = []) =>
-    invoke<{ scanId: string }>("start_scan", { request: { profile, excludedPaths } }),
+  startScan: (profile: ScanProfileId, excludedPaths: string[] = [], custom?: CustomScanOptions) =>
+    invoke<{ scanId: string }>("start_scan", { request: { profile, excludedPaths, custom } }),
   cancelScan: (scanId: string) => invoke<void>("cancel_scan", { request: { scanId } }),
   getScanStatus: (scanId: string) =>
     invoke<ScanSummary>("get_scan_status", { request: { scanId } }),
@@ -29,13 +31,13 @@ export const commands = {
     invoke<Finding[]>("get_scan_findings", { request: { scanId, offset, limit } }),
   revealItem: (scanId: string, findingId: string) =>
     invoke<void>("reveal_item", { request: { scanId, findingId } }),
-  createCleanupPlan: (scanId: string, findingIds: string[]) =>
+  createCleanupPlan: (scanId: string, findingIds: string[], action: CleanupAction = "moveToTrash") =>
     invoke<CleanupPlan>("create_cleanup_plan", {
-      request: { scanId, findingIds, action: "moveToTrash" },
+      request: { scanId, findingIds, action },
     }),
-  executeCleanupPlan: (planId: string, confirmationToken: string) =>
+  executeCleanupPlan: (planId: string, confirmationToken: string, typedConfirmation?: string) =>
     invoke<{ operationId: string }>("execute_cleanup_plan", {
-      request: { planId, confirmationToken },
+      request: { planId, confirmationToken, typedConfirmation },
     }),
   cancelCleanup: (operationId: string) =>
     invoke<void>("cancel_cleanup", { request: { operationId } }),

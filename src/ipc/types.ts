@@ -18,6 +18,9 @@ export type AppSettings = {
   scanHiddenFiles: boolean;
   maximumConcurrency: number;
   largeFileThresholdBytes: number;
+  veryLargeFileThresholdBytes: number;
+  hugeFileThresholdBytes: number;
+  oldFileThresholdDays: number;
   duplicateMinimumSizeBytes: number;
   duplicateVerificationMode: "fullHash" | "byteForByte";
   moveToTrashByDefault: true;
@@ -77,6 +80,15 @@ export type ScanProfile = {
   expectedDuration: string;
   available: boolean;
   warning?: string;
+};
+
+export type CustomScanOptions = {
+  roots: string[];
+  enabledCategories: RuleCategory[];
+  minimumFileSizeBytes: number;
+  maximumDepth: number;
+  includeHiddenFiles: boolean;
+  includeExternalDrives: boolean;
 };
 
 export type ScanProgress = {
@@ -159,6 +171,7 @@ export type CleanupPlan = {
   expectedReclaimableBytes: number;
   riskSummary: { safe: number; careful: number; expert: number };
   confirmationToken: string;
+  requiredConfirmationPhrase?: string;
 };
 
 export type CleanupItemResult = {
@@ -166,7 +179,7 @@ export type CleanupItemResult = {
   ruleId: string;
   displayPath: string;
   expectedBytes: number;
-  status: "movedToTrash" | "skipped" | "failed";
+  status: "movedToTrash" | "permanentlyDeleted" | "skipped" | "failed";
   error?: CommandError;
 };
 

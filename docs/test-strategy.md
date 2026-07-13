@@ -26,3 +26,7 @@ Catalog tests enforce unique, versioned rule IDs, at least 25 definitions, relat
 ## Phase 5 duplicate gate
 
 Hashing fixtures prove same-size non-identical files never form a group, identical files do, optional byte verification detects differences, and a cancelled token interrupts hashing. Persistence tests cover paged groups and traversal-resistant IDs. Cleanup tests prove the backend rejects any selection that includes the keep copy or would Trash every copy, while valid plans freeze one survivor. Frontend store tests prove automatic keep selection, keep reassignment, and rejection of attempts to toggle the keep copy into Trash.
+
+## Phase 6 destructive and analysis gate
+
+Permanent-executor tests cover regular deletion and symlink refusal. Cleanup tests prove the feature flag blocks plan creation by default, enabled plans preserve the permanent action, and expert plans reject missing or mismatched typed phrases. Custom-analysis fixtures prove large files are Careful review-only findings and hidden/general old files are excluded. Frontend tests prove native confirmation precedes permanent execution and Custom Scan forwards explicit bounded options.

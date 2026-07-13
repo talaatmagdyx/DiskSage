@@ -24,6 +24,7 @@ use crate::{
 };
 
 use super::{
+    analysis::{self, AnalysisConfig},
     cancellation::CancellationToken,
     exclusions::ExclusionMatcher,
     walker::{measure_target, TargetMeasurement},
@@ -39,6 +40,7 @@ struct ScanScope {
     home: PathBuf,
     platform: &'static str,
     project_roots: Vec<PathBuf>,
+    analysis: Option<AnalysisConfig>,
 }
 
 pub struct ScanManager {
@@ -65,18 +67,18 @@ impl ScanManager {
             profile(
                 ScanProfileId::FullAnalysis,
                 "Full Analysis",
-                "Large files, old files, duplicates, and project artifacts",
+                "Known rules, project artifacts, large files, and old installers",
                 "Can take significant time",
-                false,
-                Some("Full Analysis arrives after duplicate hashing and project-context rules are implemented."),
+                true,
+                Some("Full Analysis inspects configured project roots and can take significant time. Duplicate content remains in the dedicated Duplicates workflow."),
             ),
             profile(
                 ScanProfileId::Custom,
                 "Custom Scan",
                 "User-selected roots and rule categories",
                 "Depends on selected roots",
-                false,
-                Some("Custom roots remain disabled until root validation and advanced exclusions are complete."),
+                true,
+                Some("Custom analysis is read-only: large files and old installers are review suggestions."),
             ),
         ]
     }
@@ -87,18 +89,69 @@ impl ScanManager {
         request: StartScanRequest,
         home: PathBuf,
         platform: &'static str,
-        project_roots: Vec<PathBuf>,
+        settings: crate::domain::settings::AppSettings,
     ) -> Result<String, CommandError> {
-        if !matches!(
-            request.profile,
-            ScanProfileId::Quick | ScanProfileId::Developer
-        ) {
-            return Err(CommandError::new(
-                ErrorCode::CommandUnavailable,
-                "That scan profile is not available in this phase.",
-                true,
-            ));
-        }
+        let project_roots: Vec<PathBuf> =
+            settings.project_roots.iter().map(PathBuf::from).collect();
+        let analysis = match request.profile {
+            ScanProfileId::Custom => {
+                let options = request.custom.as_ref().ok_or_else(|| {
+                    CommandError::new(
+                        ErrorCode::InvalidSettings,
+                        "Custom Scan requires folders and analysis options.",
+                        true,
+                    )
+                })?;
+                Some(analysis::validate_custom_options(
+                    options,
+                    &home,
+                    platform,
+                    settings.large_file_threshold_bytes,
+                    settings.very_large_file_threshold_bytes,
+                    settings.huge_file_threshold_bytes,
+                    settings.old_file_threshold_days,
+                )?)
+            }
+            ScanProfileId::FullAnalysis => {
+                if project_roots.is_empty() {
+                    return Err(CommandError::new(
+                        ErrorCode::InvalidSettings,
+                        "Configure at least one project root before Full Analysis.",
+                        true,
+                    ));
+                }
+                let roots = project_roots
+                    .iter()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>();
+                Some(analysis::validate_custom_options(
+                    &crate::domain::scan::CustomScanOptions {
+                        roots,
+                        enabled_categories: vec![RuleCategory::LargeFile, RuleCategory::OldFile],
+                        minimum_file_size_bytes: 0,
+                        maximum_depth: 32,
+                        include_hidden_files: settings.scan_hidden_files,
+                        include_external_drives: settings.scan_external_drives,
+                    },
+                    &home,
+                    platform,
+                    settings.large_file_threshold_bytes,
+                    settings.very_large_file_threshold_bytes,
+                    settings.huge_file_threshold_bytes,
+                    settings.old_file_threshold_days,
+                )?)
+            }
+            _ => {
+                if request.custom.is_some() {
+                    return Err(CommandError::new(
+                        ErrorCode::InvalidSettings,
+                        "Custom options are accepted only by Custom Scan.",
+                        true,
+                    ));
+                }
+                None
+            }
+        };
         let exclusions = ExclusionMatcher::new(&request.excluded_paths)?;
         let mut active = self
             .active
@@ -134,6 +187,7 @@ impl ScanManager {
             home,
             platform,
             project_roots,
+            analysis,
         };
         tauri::async_runtime::spawn(async move {
             let worker_manager = Arc::clone(&manager);
@@ -197,6 +251,7 @@ impl ScanManager {
             home,
             platform,
             project_roots,
+            analysis,
         } = scope;
         let started = Instant::now();
         let _ = app.emit("scan://started", &summary);
@@ -246,9 +301,11 @@ impl ScanManager {
                 match self.repository.append_finding(&finding) {
                     Ok(()) => {
                         summary.findings_count += 1;
-                        summary.reclaimable_bytes = summary
-                            .reclaimable_bytes
-                            .saturating_add(measurement.allocated_size);
+                        if finding.cleanup_allowed {
+                            summary.reclaimable_bytes = summary
+                                .reclaimable_bytes
+                                .saturating_add(measurement.allocated_size);
+                        }
                         let _ = app.emit("scan://finding", &finding);
                     }
                     Err(error) => {
@@ -259,6 +316,74 @@ impl ScanManager {
                 }
             }
             self.publish_status(&summary);
+        }
+
+        if let Some(config) = analysis.filter(|_| !cancellation.is_cancelled()) {
+            summary.phase = ScanPhase::Analyzing;
+            self.publish_status(&summary);
+            let baseline_files = summary.files_scanned;
+            let baseline_directories = summary.directories_scanned;
+            let baseline_bytes = summary.bytes_examined;
+            let finding_count = std::cell::Cell::new(summary.findings_count);
+            let reclaimable_bytes = std::cell::Cell::new(summary.reclaimable_bytes);
+            let mut analysis_last_progress = Instant::now() - Duration::from_secs(1);
+            let result = analysis::analyze(
+                &summary.scan_id,
+                &home,
+                &config,
+                &exclusions,
+                &cancellation,
+                |path, measured| {
+                    if analysis_last_progress.elapsed() >= Duration::from_millis(150) {
+                        let progress = ScanProgress {
+                            scan_id: summary.scan_id.clone(),
+                            phase: ScanPhase::Analyzing,
+                            current_path: Some(display_path(path, &home)),
+                            files_scanned: baseline_files + measured.files_scanned,
+                            directories_scanned: baseline_directories
+                                + measured.directories_scanned,
+                            bytes_examined: baseline_bytes + measured.bytes_examined,
+                            findings_count: finding_count.get(),
+                            reclaimable_bytes: reclaimable_bytes.get(),
+                            skipped_count: summary.skipped_count + measured.skipped_count,
+                            permission_denied_count: summary.permission_denied_count
+                                + measured.permission_denied_count,
+                            elapsed_ms: started.elapsed().as_millis() as u64,
+                        };
+                        let _ = app.emit("scan://progress", &progress);
+                        analysis_last_progress = Instant::now();
+                    }
+                },
+                |finding| {
+                    self.repository.append_finding(&finding)?;
+                    finding_count.set(finding_count.get() + 1);
+                    if finding.cleanup_allowed {
+                        reclaimable_bytes.set(reclaimable_bytes.get().saturating_add(
+                            finding.allocated_size.unwrap_or(finding.logical_size),
+                        ));
+                    }
+                    let _ = app.emit("scan://finding", &finding);
+                    Ok(())
+                },
+            );
+            match result {
+                Ok(measured) => {
+                    summary.files_scanned = baseline_files + measured.files_scanned;
+                    summary.directories_scanned =
+                        baseline_directories + measured.directories_scanned;
+                    summary.bytes_examined = baseline_bytes + measured.bytes_examined;
+                    summary.skipped_count += measured.skipped_count;
+                    summary.permission_denied_count += measured.permission_denied_count;
+                    summary.errors.extend(measured.errors);
+                    summary.errors.truncate(50);
+                    summary.findings_count = finding_count.get();
+                    summary.reclaimable_bytes = reclaimable_bytes.get();
+                }
+                Err(error) => {
+                    summary.errors.push(error);
+                    summary.phase = ScanPhase::Failed;
+                }
+            }
         }
 
         summary.elapsed_ms = started.elapsed().as_millis() as u64;
@@ -460,15 +585,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unavailable_profiles_are_explicit() {
+    fn all_phase_six_profiles_are_available() {
         let profiles = ScanManager::profiles();
         assert_eq!(profiles.len(), 4);
-        assert!(
-            !profiles
-                .iter()
-                .find(|profile| profile.id == ScanProfileId::FullAnalysis)
-                .unwrap()
-                .available
-        );
+        assert!(profiles.iter().all(|profile| profile.available));
     }
 }

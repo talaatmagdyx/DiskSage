@@ -42,10 +42,19 @@ pub fn validate_roots(
     home: &Path,
     platform: &str,
 ) -> Result<Vec<PathBuf>, CommandError> {
-    if roots.is_empty() || roots.len() > 8 {
+    validate_roots_with_limit(roots, home, platform, 8)
+}
+
+pub fn validate_roots_with_limit(
+    roots: &[String],
+    home: &Path,
+    platform: &str,
+    maximum_roots: usize,
+) -> Result<Vec<PathBuf>, CommandError> {
+    if roots.is_empty() || roots.len() > maximum_roots {
         return Err(CommandError::new(
             ErrorCode::InvalidPath,
-            "Choose between 1 and 8 folders for duplicate analysis.",
+            format!("Choose between 1 and {maximum_roots} folders for analysis."),
             true,
         ));
     }

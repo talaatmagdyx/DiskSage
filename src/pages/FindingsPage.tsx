@@ -20,6 +20,7 @@ import { formatBytes } from "../lib/utils";
 import { useCleanupStore } from "../stores/cleanupStore";
 import { useFindingsStore } from "../stores/findingsStore";
 import { useScanStore } from "../stores/scanStore";
+import { useSettingsStore } from "../stores/settingsStore";
 
 const categoryLabels: Record<RuleCategory, string> = {
   applicationCache: "Application cache",
@@ -39,6 +40,7 @@ export function FindingsPage() {
   const { findings, status, error, load } = useFindingsStore();
   const summary = useScanStore((state) => state.summary);
   const cleanup = useCleanupStore();
+  const { settings, load: loadSettings } = useSettingsStore();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<RuleCategory | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -46,6 +48,7 @@ export function FindingsPage() {
   useEffect(() => {
     if (summary?.scanId && findings.length === 0 && status === "idle") void load(summary.scanId);
   }, [findings.length, load, status, summary?.scanId]);
+  useEffect(() => { if (!settings) void loadSettings(); }, [loadSettings, settings]);
 
   useEffect(() => {
     const existing = new Set(findings.map((finding) => finding.id));
@@ -70,8 +73,8 @@ export function FindingsPage() {
     });
   };
 
-  const createPlan = () => {
-    if (summary?.scanId && selected.size > 0) void cleanup.createPlan(summary.scanId, [...selected]);
+  const createPlan = (action: "moveToTrash" | "permanentDelete") => {
+    if (summary?.scanId && selected.size > 0) void cleanup.createPlan(summary.scanId, [...selected], action);
   };
 
   return (
@@ -82,14 +85,14 @@ export function FindingsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Findings</h1>
           <p className="mt-2 text-sm text-muted">Known, regenerable cache locations with backend evidence and exact cleanup boundaries.</p>
         </div>
-        <div className="text-right"><p className="text-xs text-muted">Visible reclaimable</p><p className="mt-1 text-2xl font-semibold">{formatBytes(total)}</p></div>
+        <div className="text-right"><p className="text-xs text-muted">Visible item size</p><p className="mt-1 text-2xl font-semibold">{formatBytes(total)}</p></div>
       </div>
 
       {cleanup.error && <Card className="mt-6 flex items-start gap-3 border-amber-400/20 p-5" role="alert"><TriangleAlert className="shrink-0 text-amber-300" size={19} /><div><p className="font-semibold">Cleanup stopped safely</p><p className="mt-1 text-sm text-muted">{cleanup.error.message}</p></div></Card>}
       {cleanup.summary && (
         <Card className="mt-6 p-5">
           <div className="flex items-start justify-between gap-5">
-            <div className="flex gap-3">{cleanup.summary.failureCount > 0 || cleanup.summary.skippedCount > 0 ? <TriangleAlert className="text-amber-300" size={21} /> : <CheckCircle2 className="text-sage-300" size={21} />}<div><h2 className="font-semibold">Moved {cleanup.summary.successCount} of {cleanup.summary.selectedCount} items to Trash</h2><p className="mt-1 text-sm text-muted">{cleanup.summary.skippedCount} skipped · {cleanup.summary.failureCount} failed · free space changed by {formatBytes(cleanup.summary.actualFreeSpaceChangeBytes ?? 0)}</p><p className="mt-1 text-xs text-muted">Items in Trash still occupy disk space until Trash is emptied.</p></div></div>
+              <div className="flex gap-3">{cleanup.summary.failureCount > 0 || cleanup.summary.skippedCount > 0 ? <TriangleAlert className="text-amber-300" size={21} /> : <CheckCircle2 className="text-sage-300" size={21} />}<div><h2 className="font-semibold">{cleanup.summary.action === "permanentDelete" ? "Permanently deleted" : "Moved"} {cleanup.summary.successCount} of {cleanup.summary.selectedCount} items{cleanup.summary.action === "moveToTrash" ? " to Trash" : ""}</h2><p className="mt-1 text-sm text-muted">{cleanup.summary.skippedCount} skipped · {cleanup.summary.failureCount} failed · free space changed by {formatBytes(cleanup.summary.actualFreeSpaceChangeBytes ?? 0)}</p>{cleanup.summary.action === "moveToTrash" && <p className="mt-1 text-xs text-muted">Items in Trash still occupy disk space until Trash is emptied.</p>}</div></div>
             <Button onClick={cleanup.reset} variant="ghost"><XCircle size={15} />Dismiss</Button>
           </div>
         </Card>
@@ -133,12 +136,12 @@ export function FindingsPage() {
       {selected.size > 0 && cleanup.status !== "review" && (
         <div className="sticky bottom-5 z-20 mt-5 flex items-center justify-between rounded-2xl border border-sage-400/25 bg-[#0a1714]/95 p-4 shadow-2xl backdrop-blur">
           <div><p className="font-semibold">{selected.size} safe {selected.size === 1 ? "item" : "items"} selected</p><p className="mt-1 text-xs text-muted">{formatBytes(selectedBytes)} will be reviewed again before anything moves.</p></div>
-          <Button disabled={cleanupBusy} onClick={createPlan}><Trash2 size={16} />{cleanup.status === "planning" ? "Creating plan…" : "Review cleanup plan"}</Button>
+          <div className="flex gap-2"><Button disabled={cleanupBusy} onClick={() => createPlan("moveToTrash")}><Trash2 size={16} />{cleanup.status === "planning" ? "Creating plan…" : "Review Trash plan"}</Button>{settings?.permanentDeletionEnabled && <Button disabled={cleanupBusy} onClick={() => createPlan("permanentDelete")} variant="destructive"><Trash2 size={16} />Review permanent delete</Button>}</div>
         </div>
       )}
 
       {cleanup.plan && (cleanup.status === "review" || cleanup.status === "starting") && (
-        <CleanupReviewDialog busy={cleanup.status === "starting"} onCancel={cleanup.dismissPlan} onConfirm={() => void cleanup.executePlan()} plan={cleanup.plan} />
+        <CleanupReviewDialog busy={cleanup.status === "starting"} onCancel={cleanup.dismissPlan} onConfirm={(phrase) => void cleanup.executePlan(phrase)} plan={cleanup.plan} />
       )}
     </div>
   );

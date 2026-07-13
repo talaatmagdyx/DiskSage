@@ -107,12 +107,12 @@ export function DashboardPage() {
                 </span>
                 <h2 className="mt-5 text-xl font-semibold">Targeted scans are ready.</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Quick and Developer scans inspect ten backend-owned cache rules with cancellation, progress, and local findings persistence.
+                  Quick, Developer, Full, and Custom scans provide bounded analysis with cancellation, progress, and local findings persistence.
                 </p>
                 <Link to="/scan" className="mt-5 inline-flex rounded-xl bg-sage-400 px-4 py-2.5 text-sm font-semibold text-sage-900">Choose a scan</Link>
               </div>
               <div className="mt-6 flex items-center gap-2 text-xs text-muted">
-                <LockKeyhole aria-hidden="true" size={14} /> Destructive commands are not registered.
+                <LockKeyhole aria-hidden="true" size={14} /> Permanent deletion is feature-gated, off by default, and plan-only.
               </div>
             </Card>
           </div>

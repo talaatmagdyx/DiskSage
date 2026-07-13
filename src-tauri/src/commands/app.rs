@@ -15,6 +15,6 @@ pub fn get_app_info() -> AppInfo {
         name: "DiskSage",
         version: env!("CARGO_PKG_VERSION"),
         platform: std::env::consts::OS,
-        destructive_commands_available: false,
+        destructive_commands_available: true,
     }
 }

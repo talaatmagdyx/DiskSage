@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { commands } from "../ipc/commands";
 import { normalizeCommandError } from "../ipc/errors";
 import type {
@@ -6,6 +7,7 @@ import type {
   CleanupPlan,
   CleanupProgress,
   CleanupSummary,
+  CleanupAction,
   CommandError,
 } from "../ipc/types";
 
@@ -17,8 +19,8 @@ type CleanupState = {
   itemResults: CleanupItemResult[];
   summary: CleanupSummary | null;
   error: CommandError | null;
-  createPlan: (scanId: string, findingIds: string[]) => Promise<void>;
-  executePlan: () => Promise<void>;
+  createPlan: (scanId: string, findingIds: string[], action?: CleanupAction) => Promise<void>;
+  executePlan: (typedConfirmation?: string) => Promise<void>;
   cancel: () => Promise<void>;
   dismissPlan: () => void;
   reset: () => void;
@@ -40,21 +42,31 @@ const initialState = {
 
 export const useCleanupStore = create<CleanupState>((set, get) => ({
   ...initialState,
-  createPlan: async (scanId, findingIds) => {
+  createPlan: async (scanId, findingIds, action = "moveToTrash") => {
     set({ status: "planning", error: null, summary: null, itemResults: [] });
     try {
-      const plan = await commands.createCleanupPlan(scanId, findingIds);
+      const plan = await commands.createCleanupPlan(scanId, findingIds, action);
       set({ status: "review", plan });
     } catch (error) {
       set({ status: "error", error: normalizeCommandError(error) });
     }
   },
-  executePlan: async () => {
+  executePlan: async (typedConfirmation) => {
     const plan = get().plan;
     if (!plan) return;
     set({ status: "starting", error: null });
     try {
-      const { operationId } = await commands.executeCleanupPlan(plan.id, plan.confirmationToken);
+      if (plan.action === "permanentDelete") {
+        const confirmed = await confirm(
+          `Permanently delete ${plan.items.length} items (${plan.expectedReclaimableBytes.toLocaleString()} bytes)? This cannot be undone.`,
+          { title: "Permanent deletion", kind: "warning" },
+        );
+        if (!confirmed) {
+          set({ status: "review" });
+          return;
+        }
+      }
+      const { operationId } = await commands.executeCleanupPlan(plan.id, plan.confirmationToken, typedConfirmation);
       set({ status: "running", operationId });
     } catch (error) {
       set({ status: "error", error: normalizeCommandError(error) });
