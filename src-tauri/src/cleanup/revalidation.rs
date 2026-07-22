@@ -361,7 +361,11 @@ mod tests {
         finding::{Finding, FindingEvidence},
         rule::{RecommendedAction, RiskLevel, RuleCategory},
     };
-    use std::io::Write;
+    use std::{
+        fs::FileTimes,
+        io::Write,
+        time::{Duration, SystemTime},
+    };
 
     fn finding(home: &Path) -> Finding {
         let path = home.join(".npm/_cacache");
@@ -459,9 +463,10 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let finding = finding(directory.path());
         let item = snapshot_finding(&finding, directory.path(), "linux", &RulesRegistry).unwrap();
-        fs::File::create(finding.path.join("changed"))
-            .unwrap()
-            .write_all(b"changed")
+        let mut changed = fs::File::create(finding.path.join("changed")).unwrap();
+        changed.write_all(b"changed").unwrap();
+        changed
+            .set_times(FileTimes::new().set_modified(SystemTime::now() + Duration::from_secs(5)))
             .unwrap();
         assert!(revalidate_item(
             &item,
