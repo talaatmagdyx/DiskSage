@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
+  AppLink,
   ApplicationUninstallPlan,
   ApplicationUninstallResult,
   ApplicationUninstallMode,
@@ -36,6 +37,7 @@ const invokeCommand = async <T>(command: string, args?: Record<string, unknown>)
 
 export const commands = {
   getAppInfo: () => invokeCommand<AppInfo>("get_app_info"),
+  openAppLink: (link: AppLink) => invokeCommand<void>("open_app_link", { request: { link } }),
   scanApplications: (includeSystemApps = false) =>
     invokeCommand<InstalledApplication[]>("scan_applications", { includeSystemApps }),
   revealApplication: (applicationId: string) =>

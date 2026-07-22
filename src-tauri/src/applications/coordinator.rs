@@ -482,6 +482,7 @@ fn application_is_running(_canonical_path: &Path) -> bool {
     false
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn process_list_contains_bundle(process_list: &str, bundle_path: &Path) -> bool {
     let executable_prefix = format!("{}/Contents/MacOS/", bundle_path.to_string_lossy());
     process_list

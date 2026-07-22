@@ -252,6 +252,7 @@ fn owner_is_running(_markers: &[&str]) -> bool {
     false
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn process_list_contains_marker(process_list: &str, markers: &[&str]) -> bool {
     process_list
         .lines()

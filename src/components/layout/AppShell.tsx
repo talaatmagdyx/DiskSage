@@ -5,6 +5,7 @@ import {
   History,
   ScanSearch,
   Settings,
+  Info,
   ShieldCheck,
  Sparkles,
   Keyboard,
@@ -118,7 +119,7 @@ export function AppShell() {
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted">Every item is planned, reviewed, and revalidated before it moves.</p>
           </div>
-          <NavLink
+     <NavLink
             to="/settings"
             className={({ isActive }) =>
               cn(
@@ -128,6 +129,17 @@ export function AppShell() {
             }
           >
       <Settings aria-hidden="true" size={18} /> <span className="hidden lg:inline">Settings</span>
+     </NavLink>
+     <NavLink
+            to="/about"
+            className={({ isActive }) =>
+              cn(
+                "mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-white/5 hover:text-ink",
+                isActive && "bg-white/5 text-ink",
+              )
+            }
+          >
+      <Info aria-hidden="true" size={18} /> <span className="hidden lg:inline">About</span>
      </NavLink>
      <button className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-white/5 hover:text-ink" onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts">
       <Keyboard aria-hidden="true" size={18} /><span className="hidden lg:inline">Shortcuts</span>

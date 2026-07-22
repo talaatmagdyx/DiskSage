@@ -43,6 +43,7 @@ pub fn run() {
             commands::intelligence::scan_orphaned_application_data,
             commands::intelligence::scan_storage_map,
             commands::app::get_app_info,
+            commands::app::open_app_link,
             commands::diagnostics::export_diagnostics,
             commands::disk::list_disks,
             commands::disk::get_disk_info,

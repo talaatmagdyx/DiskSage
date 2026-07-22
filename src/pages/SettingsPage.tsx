@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Download, Info, LoaderCircle, Palette, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -9,6 +10,7 @@ import { normalizeCommandError } from "../ipc/errors";
 import { toast } from "../stores/toastStore";
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { settings, status, error, load, save } = useSettingsStore();
   const [draft, setDraft] = useState<AppSettings | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -124,8 +126,7 @@ export function SettingsPage() {
           </Card>
 
           <Card className="p-6">
-            <div className="flex items-start gap-3"><Info className="mt-0.5 text-sage-300" size={19} aria-hidden="true" /><div><h2 className="font-semibold">About DiskSage</h2><p className="mt-1 text-sm text-muted">Local-first disk analysis and safety-focused cleanup.</p></div></div>
-            <dl className="mt-5 grid grid-cols-3 gap-3 text-sm"><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Version</dt><dd className="mt-1 font-mono">{appInfo?.version ?? "Loading…"}</dd></div><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Platform</dt><dd className="mt-1 capitalize">{appInfo?.platform ?? "Loading…"}</dd></div><div className="rounded-xl border border-line bg-canvas/40 p-4"><dt className="text-xs text-muted">Privacy</dt><dd className="mt-1">Local by design</dd></div></dl>
+            <div className="flex items-start justify-between gap-6"><div className="flex items-start gap-3"><Info className="mt-0.5 text-sage-300" size={19} aria-hidden="true" /><div><h2 className="font-semibold">About DiskSage</h2><p className="mt-1 text-sm text-muted">Version {appInfo?.version ?? "…"} · Local-first disk analysis and safety-focused cleanup.</p></div></div><Button type="button" variant="secondary" onClick={() => navigate("/about")}>Open About</Button></div>
           </Card>
 
           {error && <p className="text-sm text-amber-100" role="alert">{error.message}</p>}

@@ -276,7 +276,8 @@ export async function bootstrapPreviewScenario() {
 }
 
 export async function previewInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (command === "get_app_info") return { name: "DiskSage", version: "0.1.0", platform: "macos", destructiveCommandsAvailable: true } as T;
+  if (command === "get_app_info") return { name: "DiskSage", version: "0.1.0", platform: "macos", architecture: "aarch64", buildProfile: "development", runtime: "Tauri 2", destructiveCommandsAvailable: true } as T;
+  if (command === "open_app_link") return undefined as T;
   if (command === "get_settings") return settings as T;
   if (command === "update_settings") {
     const request = args?.request as { settings?: AppSettings } | undefined;

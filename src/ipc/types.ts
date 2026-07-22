@@ -13,8 +13,13 @@ export type AppInfo = {
  name: string;
  version: string;
  platform: string;
+ architecture: string;
+ buildProfile: "development" | "release";
+ runtime: string;
  destructiveCommandsAvailable: boolean;
 };
+
+export type AppLink = "repository" | "releases" | "privacy" | "security" | "license";
 
 export type AppSettings = {
  schemaVersion: number;

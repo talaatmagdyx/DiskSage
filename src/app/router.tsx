@@ -9,6 +9,7 @@ import { HistoryPage } from "../pages/HistoryPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
 import { ApplicationsPage } from "../pages/ApplicationsPage";
 import { StorageMapPage } from "../pages/StorageMapPage";
+import { AboutPage } from "../pages/AboutPage";
 
 export function AppRouter() {
   return (
@@ -23,6 +24,7 @@ export function AppRouter() {
         <Route path="storage-map" element={<StorageMapPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="about" element={<AboutPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
