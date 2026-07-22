@@ -171,6 +171,80 @@ mod tests {
         assert_eq!(result.skipped_count, 1);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn distinguishes_sparse_logical_and_allocated_size() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("virtual-disk.raw");
+        let file = fs::File::create(&file_path).unwrap();
+        file.set_len(256 * 1024 * 1024).unwrap();
+
+        let result = measure_target(
+            &file_path,
+            &ExclusionMatcher::default(),
+            &CancellationToken::default(),
+            |_, _| {},
+        );
+
+        assert_eq!(result.logical_size, 256 * 1024 * 1024);
+        assert!(result.allocated_size < result.logical_size);
+    }
+
+    #[test]
+    fn cancellation_stops_an_active_walk() {
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..100 {
+            fs::write(dir.path().join(format!("fixture-{index}")), b"cache").unwrap();
+        }
+        let token = CancellationToken::default();
+        let result = measure_target(
+            dir.path(),
+            &ExclusionMatcher::default(),
+            &token,
+            |_, measurement| {
+                if measurement.files_scanned > 0 {
+                    token.cancel();
+                }
+            },
+        );
+
+        assert!(result.files_scanned > 0);
+        assert!(result.files_scanned < 100);
+    }
+
+    #[test]
+    fn permission_denial_is_counted_without_aborting_the_scan() {
+        let mut measurement = TargetMeasurement::default();
+        record_error(
+            &mut measurement,
+            Path::new("restricted"),
+            std::io::Error::new(std::io::ErrorKind::PermissionDenied, "fixture"),
+        );
+
+        assert_eq!(measurement.permission_denied_count, 1);
+        assert_eq!(measurement.errors.len(), 1);
+        assert_eq!(measurement.errors[0].code, ErrorCode::PermissionDenied);
+    }
+
+    #[test]
+    #[ignore = "release-candidate performance fixture"]
+    fn scans_one_hundred_thousand_files() {
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..100_000 {
+            fs::File::create(dir.path().join(format!("fixture-{index}"))).unwrap();
+        }
+        let started = std::time::Instant::now();
+        let result = measure_target(
+            dir.path(),
+            &ExclusionMatcher::default(),
+            &CancellationToken::default(),
+            |_, _| {},
+        );
+
+        assert_eq!(result.files_scanned, 100_000);
+        eprintln!("scanned 100,000 files in {:?}", started.elapsed());
+    }
+
     #[test]
     fn cancellation_stops_before_work() {
         let directory = tempfile::tempdir().unwrap();

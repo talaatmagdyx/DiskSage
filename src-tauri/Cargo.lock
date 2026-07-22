@@ -611,6 +611,7 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "chrono",
+ "plist",
  "serde",
  "serde_json",
  "sysinfo",

@@ -1,6 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
+  ApplicationUninstallPlan,
+  ApplicationUninstallResult,
+  ApplicationUninstallMode,
   AppSettings,
   CleanupPlan,
   CleanupSummary,
@@ -13,6 +16,7 @@ import type {
  DuplicateSummary,
  DiagnosticsExport,
   Finding,
+  InstalledApplication,
   ScanProfile,
   ScanProfileId,
   ScanSummary,
@@ -29,6 +33,18 @@ const invokeCommand = async <T>(command: string, args?: Record<string, unknown>)
 
 export const commands = {
   getAppInfo: () => invokeCommand<AppInfo>("get_app_info"),
+  scanApplications: (includeSystemApps = false) =>
+    invokeCommand<InstalledApplication[]>("scan_applications", { includeSystemApps }),
+  revealApplication: (applicationId: string) =>
+    invokeCommand<void>("reveal_application", { request: { applicationId } }),
+  createApplicationUninstallPlan: (applicationId: string, mode: ApplicationUninstallMode) =>
+    invokeCommand<ApplicationUninstallPlan>("create_application_uninstall_plan", {
+      request: { applicationId, mode },
+    }),
+  executeApplicationUninstallPlan: (planId: string, confirmationToken: string, selectedRelatedItemIds: string[] = [], typedConfirmation?: string) =>
+    invokeCommand<ApplicationUninstallResult>("execute_application_uninstall_plan", {
+      request: { planId, confirmationToken, selectedRelatedItemIds, typedConfirmation },
+    }),
   exportDiagnostics: () => invokeCommand<DiagnosticsExport>("export_diagnostics"),
   listDisks: () => invokeCommand<DiskInfo[]>("list_disks"),
   getSettings: () => invokeCommand<AppSettings>("get_settings"),
@@ -36,47 +52,47 @@ export const commands = {
     invokeCommand<AppSettings>("update_settings", { request: { settings } }),
   getScanProfiles: () => invokeCommand<ScanProfile[]>("get_scan_profiles"),
   startScan: (profile: ScanProfileId, excludedPaths: string[] = [], custom?: CustomScanOptions) =>
-    invoke<{ scanId: string }>("start_scan", { request: { profile, excludedPaths, custom } }),
-  cancelScan: (scanId: string) => invoke<void>("cancel_scan", { request: { scanId } }),
+    invokeCommand<{ scanId: string }>("start_scan", { request: { profile, excludedPaths, custom } }),
+  cancelScan: (scanId: string) => invokeCommand<void>("cancel_scan", { request: { scanId } }),
   getScanStatus: (scanId: string) =>
-    invoke<ScanSummary>("get_scan_status", { request: { scanId } }),
+    invokeCommand<ScanSummary>("get_scan_status", { request: { scanId } }),
   getScanFindings: (scanId: string, offset = 0, limit = 100) =>
-    invoke<Finding[]>("get_scan_findings", { request: { scanId, offset, limit } }),
+    invokeCommand<Finding[]>("get_scan_findings", { request: { scanId, offset, limit } }),
   revealItem: (scanId: string, findingId: string) =>
-    invoke<void>("reveal_item", { request: { scanId, findingId } }),
+    invokeCommand<void>("reveal_item", { request: { scanId, findingId } }),
   createCleanupPlan: (scanId: string, findingIds: string[], action: CleanupAction = "moveToTrash") =>
-    invoke<CleanupPlan>("create_cleanup_plan", {
+    invokeCommand<CleanupPlan>("create_cleanup_plan", {
       request: { scanId, findingIds, action },
     }),
   executeCleanupPlan: (planId: string, confirmationToken: string, typedConfirmation?: string) =>
-    invoke<{ operationId: string }>("execute_cleanup_plan", {
+    invokeCommand<{ operationId: string }>("execute_cleanup_plan", {
       request: { planId, confirmationToken, typedConfirmation },
     }),
   cancelCleanup: (operationId: string) =>
-    invoke<void>("cancel_cleanup", { request: { operationId } }),
+    invokeCommand<void>("cancel_cleanup", { request: { operationId } }),
   getCleanupHistory: (offset = 0, limit = 50) =>
     invoke<CleanupSummary[]>("get_cleanup_history", { request: { offset, limit } }),
   clearCleanupHistory: () => invoke<void>("clear_cleanup_history"),
   startDuplicateScan: (roots: string[], minimumSizeBytes: number, byteForByteVerification: boolean) =>
-    invoke<{ scanId: string }>("start_duplicate_scan", {
+    invokeCommand<{ scanId: string }>("start_duplicate_scan", {
       request: { roots, minimumSizeBytes, byteForByteVerification },
     }),
   cancelDuplicateScan: (scanId: string) =>
-    invoke<void>("cancel_duplicate_scan", { request: { scanId } }),
+    invokeCommand<void>("cancel_duplicate_scan", { request: { scanId } }),
   getDuplicateScanStatus: (scanId: string) =>
-    invoke<DuplicateSummary>("get_duplicate_scan_status", { request: { scanId } }),
+    invokeCommand<DuplicateSummary>("get_duplicate_scan_status", { request: { scanId } }),
   getDuplicateGroups: (scanId: string, offset = 0, limit = 500) =>
-    invoke<DuplicateGroup[]>("get_duplicate_groups", { request: { scanId, offset, limit } }),
+    invokeCommand<DuplicateGroup[]>("get_duplicate_groups", { request: { scanId, offset, limit } }),
   revealDuplicate: (scanId: string, groupId: string, copyId: string) =>
-    invoke<void>("reveal_duplicate", { request: { scanId, groupId, copyId } }),
+    invokeCommand<void>("reveal_duplicate", { request: { scanId, groupId, copyId } }),
   createDuplicateCleanupPlan: (scanId: string, selections: DuplicateCleanupSelection[]) =>
-    invoke<DuplicateCleanupPlan>("create_duplicate_cleanup_plan", {
+    invokeCommand<DuplicateCleanupPlan>("create_duplicate_cleanup_plan", {
       request: { scanId, selections, action: "moveToTrash" },
     }),
   executeDuplicateCleanupPlan: (planId: string, confirmationToken: string) =>
-    invoke<{ operationId: string }>("execute_duplicate_cleanup_plan", {
+    invokeCommand<{ operationId: string }>("execute_duplicate_cleanup_plan", {
       request: { planId, confirmationToken },
     }),
   cancelDuplicateCleanup: (operationId: string) =>
-    invoke<void>("cancel_duplicate_cleanup", { request: { operationId } }),
+    invokeCommand<void>("cancel_duplicate_cleanup", { request: { operationId } }),
 };

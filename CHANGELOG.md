@@ -15,6 +15,8 @@ Initial Version 1 release candidate.
 - Move-to-Trash cleanup, local audit history, partial-failure reporting, and disk refresh.
 - Staged BLAKE3 duplicate detection, optional byte verification, deterministic keep selection, and keep-one cleanup enforcement.
 - Review-only large-file and old-installer analysis.
+- Installed-application inventory with last-used and size sorting, opt-in system-app visibility, and App-only, identified-data, and Expert deep-clean uninstall reviews.
+- Running-app preflight, actionable macOS permission guidance, safe fresh-plan retry, and per-item partial uninstall failure reporting.
 - Feature-gated permanent deletion with native and expert typed confirmation.
 - First-run onboarding, system/light/dark themes, reduced motion, keyboard shortcuts, accessible dialogs and notifications, virtualized large lists, and redacted local diagnostics export.
 - macOS Apple silicon and Intel release targets plus Linux AppImage and Debian packaging workflows.

@@ -376,7 +376,7 @@ fn discover(
                         owner: owner(&metadata),
                     });
                 }
-                if progress.files_scanned % 128 == 0 {
+                if progress.files_scanned.is_multiple_of(128) {
                     progress.current_path = Some(directory.to_string_lossy().into_owned());
                     update_elapsed(progress, timer);
                     emit_progress(progress);

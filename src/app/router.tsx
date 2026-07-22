@@ -7,6 +7,7 @@ import { ScanPage } from "../pages/ScanPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { HistoryPage } from "../pages/HistoryPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
+import { ApplicationsPage } from "../pages/ApplicationsPage";
 
 export function AppRouter() {
   return (
@@ -17,6 +18,7 @@ export function AppRouter() {
         <Route path="scan" element={<ScanPage />} />
         <Route path="cleanup" element={<FindingsPage />} />
         <Route path="duplicates" element={<DuplicatesPage />} />
+        <Route path="applications" element={<ApplicationsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

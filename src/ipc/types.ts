@@ -47,6 +47,7 @@ export type ErrorCode =
   | "PATH_NOT_FOUND"
   | "PATH_PROTECTED"
   | "PERMISSION_DENIED"
+  | "APPLICATION_RUNNING"
   | "SCAN_ALREADY_RUNNING"
   | "SCAN_CANCELLED"
   | "FILESYSTEM_ERROR"
@@ -306,4 +307,65 @@ export type DuplicateCleanupPlan = {
   expectedReclaimableBytes: number;
   keptCopyCount: number;
   confirmationToken: string;
+};
+
+export type ApplicationScope = "user" | "shared" | "system";
+export type ApplicationUninstallMode = "appOnly" | "complete" | "deepCleanup";
+
+export type InstalledApplication = {
+  id: string;
+  name: string;
+  bundleId?: string;
+  version?: string;
+  path: string;
+  displayPath: string;
+  logicalSize: number;
+  allocatedSize?: number;
+  lastUsedAt?: string;
+  scope: ApplicationScope;
+  uninstallAllowed: boolean;
+  uninstallBlockReason?: string;
+};
+
+export type ApplicationUninstallPlan = {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  application: InstalledApplication;
+  mode: ApplicationUninstallMode;
+  relatedItems: RelatedApplicationItem[];
+  totalExpectedBytes: number;
+  requiredConfirmationPhrase?: string;
+  confirmationToken: string;
+};
+
+export type RelatedApplicationItem = {
+  id: string;
+  path: string;
+  displayPath: string;
+  category: string;
+  logicalSize: number;
+  allocatedSize?: number;
+  mayContainUserData: boolean;
+  confidence: "identified" | "ambiguous";
+  defaultSelected: boolean;
+  reason: string;
+};
+
+export type ApplicationUninstallResult = {
+  applicationId: string;
+  name: string;
+  displayPath: string;
+  movedToTrash: boolean;
+  expectedBytes: number;
+  mode: ApplicationUninstallMode;
+  relatedItemsPlanned: number;
+  relatedItemsMoved: number;
+  relatedItemsFailed: number;
+  failedPaths: string[];
+  failedItems: Array<{
+    displayPath: string;
+    code: ErrorCode;
+    message: string;
+  }>;
 };

@@ -1,4 +1,5 @@
 pub mod app_state;
+pub mod applications;
 pub mod cleanup;
 pub mod commands;
 pub mod domain;
@@ -32,6 +33,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::applications::scan_applications,
+            commands::applications::reveal_application,
+            commands::applications::create_application_uninstall_plan,
+            commands::applications::execute_application_uninstall_plan,
             commands::app::get_app_info,
             commands::diagnostics::export_diagnostics,
             commands::disk::list_disks,

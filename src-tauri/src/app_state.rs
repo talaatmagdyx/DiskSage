@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    applications::coordinator::ApplicationManager,
     cleanup::coordinator::CleanupManager,
     duplicates::coordinator::DuplicateManager,
     persistence::{
@@ -14,6 +15,7 @@ use crate::{
 };
 
 pub struct AppState {
+    pub application_manager: Arc<ApplicationManager>,
     pub settings_repository: Mutex<SettingsRepository>,
     pub scan_manager: Arc<ScanManager>,
     pub cleanup_manager: Arc<CleanupManager>,
@@ -31,6 +33,7 @@ impl AppState {
         let history_repository = HistoryRepository::new(history_path);
         let duplicate_repository = DuplicateRepository::new(duplicates_path);
         Self {
+            application_manager: Arc::new(ApplicationManager::default()),
             settings_repository: Mutex::new(SettingsRepository::new(settings_path)),
             scan_manager: Arc::new(ScanManager::new(scan_repository.clone())),
             cleanup_manager: Arc::new(CleanupManager::new(

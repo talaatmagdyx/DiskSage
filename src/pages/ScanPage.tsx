@@ -95,16 +95,16 @@ export function ScanPage() {
             {summary?.phase === "cancelled" && summary.profile !== "custom" && <Button onClick={() => void start(summary.profile)}><Search size={16} />Run again</Button>}
           </div>
           <div className="grid grid-cols-5 gap-px bg-line">
-            <ProgressMetric label="Files" value={(progress?.filesScanned ?? summary?.filesScanned ?? 0).toLocaleString()} />
-            <ProgressMetric label="Directories" value={(progress?.directoriesScanned ?? summary?.directoriesScanned ?? 0).toLocaleString()} />
-            <ProgressMetric label="Examined" value={formatBytes(progress?.bytesExamined ?? summary?.bytesExamined ?? 0)} />
-            <ProgressMetric label="Findings" value={(progress?.findingsCount ?? summary?.findingsCount ?? 0).toLocaleString()} />
-            <ProgressMetric label="Reclaimable" value={formatBytes(progress?.reclaimableBytes ?? summary?.reclaimableBytes ?? 0)} />
+            <ProgressMetric label="Files" value={(summary?.filesScanned ?? progress?.filesScanned ?? 0).toLocaleString()} />
+            <ProgressMetric label="Directories" value={(summary?.directoriesScanned ?? progress?.directoriesScanned ?? 0).toLocaleString()} />
+            <ProgressMetric label="Examined" value={formatBytes(summary?.bytesExamined ?? progress?.bytesExamined ?? 0)} />
+            <ProgressMetric label="Findings" value={(summary?.findingsCount ?? progress?.findingsCount ?? 0).toLocaleString()} />
+            <ProgressMetric label="Reclaimable" value={formatBytes(summary?.reclaimableBytes ?? progress?.reclaimableBytes ?? 0)} />
           </div>
           <div className="flex min-h-12 items-center gap-3 px-6 py-3 text-xs text-muted" aria-live="polite">
-            {active ? <LoaderCircle className="animate-spin text-sage-300" size={15} /> : <CheckCircle2 className="text-sage-300" size={15} />}
-            <span className="truncate font-mono">{progress?.currentPath ?? (summary?.phase === "cancelled" ? "Scan cancelled; partial findings preserved." : "Scan state saved locally.")}</span>
-            {(progress?.permissionDeniedCount ?? summary?.permissionDeniedCount ?? 0) > 0 && <span className="ml-auto shrink-0 text-amber-100">{progress?.permissionDeniedCount ?? summary?.permissionDeniedCount} permission-limited</span>}
+            {active ? <LoaderCircle className="animate-spin text-sage-300" size={15} /> : summary?.phase === "cancelled" ? <StopCircle className="text-amber-300" size={15} /> : <CheckCircle2 className="text-sage-300" size={15} />}
+            <span className="truncate font-mono">{summary?.phase === "cancelled" ? "Scan cancelled; partial findings preserved." : summary ? "Scan state saved locally." : progress?.currentPath ?? "Preparing scan…"}</span>
+            {(summary?.permissionDeniedCount ?? progress?.permissionDeniedCount ?? 0) > 0 && <span className="ml-auto shrink-0 text-amber-100">{summary?.permissionDeniedCount ?? progress?.permissionDeniedCount} permission-limited</span>}
           </div>
         </Card>
       )}

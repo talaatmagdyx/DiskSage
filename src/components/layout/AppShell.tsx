@@ -1,5 +1,6 @@
 import {
   CircleGauge,
+  AppWindow,
   Files,
   History,
   ScanSearch,
@@ -25,6 +26,7 @@ const links = [
   { to: "/scan", label: "Scan", icon: ScanSearch },
   { to: "/cleanup", label: "Findings", icon: Sparkles },
   { to: "/duplicates", label: "Duplicates", icon: Files },
+  { to: "/applications", label: "Applications", icon: AppWindow },
   { to: "/history", label: "History", icon: History },
 ];
 
@@ -49,7 +51,7 @@ export function AppShell() {
    if (event.key === "Escape") setShortcutsOpen(false);
    if (!typing && event.key === "?") { event.preventDefault(); setShortcutsOpen(true); }
    if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-   const destinations: Record<string, string> = { "1": "/", "2": "/scan", "3": "/cleanup", "4": "/duplicates", "5": "/history", ",": "/settings" };
+   const destinations: Record<string, string> = { "1": "/", "2": "/scan", "3": "/cleanup", "4": "/duplicates", "5": "/applications", "6": "/history", ",": "/settings" };
    const destination = destinations[event.key];
    if (destination) { event.preventDefault(); navigate(destination); }
   };
@@ -133,7 +135,7 @@ export function AppShell() {
    <main className="h-screen overflow-y-auto">
         <Outlet />
    </main>
-   {shortcutsOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setShortcutsOpen(false); }}><div ref={shortcutModal.ref as React.RefObject<HTMLDivElement>} onKeyDown={shortcutModal.onKeyDown} className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="shortcut-title"><div className="flex items-center justify-between"><h2 id="shortcut-title" className="text-lg font-semibold">Keyboard shortcuts</h2><button className="rounded-lg p-2 text-muted hover:bg-white/5 hover:text-ink" onClick={() => setShortcutsOpen(false)} aria-label="Close keyboard shortcuts"><X size={18} /></button></div><dl className="mt-5 grid grid-cols-[1fr_auto] gap-x-5 gap-y-3 text-sm"><dt>Overview</dt><dd><kbd>⌘/Ctrl 1</kbd></dd><dt>Scan</dt><dd><kbd>⌘/Ctrl 2</kbd></dd><dt>Findings</dt><dd><kbd>⌘/Ctrl 3</kbd></dd><dt>Duplicates</dt><dd><kbd>⌘/Ctrl 4</kbd></dd><dt>History</dt><dd><kbd>⌘/Ctrl 5</kbd></dd><dt>Settings</dt><dd><kbd>⌘/Ctrl ,</kbd></dd><dt>Show this help</dt><dd><kbd>?</kbd></dd><dt>Close a dialog</dt><dd><kbd>Esc</kbd></dd></dl></div></div>}
+   {shortcutsOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setShortcutsOpen(false); }}><div ref={shortcutModal.ref as React.RefObject<HTMLDivElement>} onKeyDown={shortcutModal.onKeyDown} className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="shortcut-title"><div className="flex items-center justify-between"><h2 id="shortcut-title" className="text-lg font-semibold">Keyboard shortcuts</h2><button className="rounded-lg p-2 text-muted hover:bg-white/5 hover:text-ink" onClick={() => setShortcutsOpen(false)} aria-label="Close keyboard shortcuts"><X size={18} /></button></div><dl className="mt-5 grid grid-cols-[1fr_auto] gap-x-5 gap-y-3 text-sm"><dt>Overview</dt><dd><kbd>⌘/Ctrl 1</kbd></dd><dt>Scan</dt><dd><kbd>⌘/Ctrl 2</kbd></dd><dt>Findings</dt><dd><kbd>⌘/Ctrl 3</kbd></dd><dt>Duplicates</dt><dd><kbd>⌘/Ctrl 4</kbd></dd><dt>Applications</dt><dd><kbd>⌘/Ctrl 5</kbd></dd><dt>History</dt><dd><kbd>⌘/Ctrl 6</kbd></dd><dt>Settings</dt><dd><kbd>⌘/Ctrl ,</kbd></dd><dt>Show this help</dt><dd><kbd>?</kbd></dd><dt>Close a dialog</dt><dd><kbd>Esc</kbd></dd></dl></div></div>}
   </div>
   );
 }

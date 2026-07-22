@@ -17,7 +17,7 @@ import { Card } from "../components/ui/Card";
 import { VirtualizedList } from "../components/ui/VirtualizedList";
 import { commands } from "../ipc/commands";
 import type { RuleCategory } from "../ipc/types";
-import { formatBytes } from "../lib/utils";
+import { formatBytes, presentStorageSize } from "../lib/utils";
 import { useCleanupStore } from "../stores/cleanupStore";
 import { useFindingsStore } from "../stores/findingsStore";
 import { useScanStore } from "../stores/scanStore";
@@ -60,10 +60,10 @@ export function FindingsPage() {
   const visible = useMemo(() => findings
     .filter((finding) => category === "all" || finding.category === category)
     .filter((finding) => `${finding.displayName} ${finding.displayPath}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((left, right) => (right.allocatedSize ?? right.logicalSize) - (left.allocatedSize ?? left.logicalSize)), [category, findings, query]);
-  const total = visible.reduce((sum, finding) => sum + (finding.allocatedSize ?? finding.logicalSize), 0);
+    .sort((left, right) => presentStorageSize(right.logicalSize, right.allocatedSize).displayedBytes - presentStorageSize(left.logicalSize, left.allocatedSize).displayedBytes), [category, findings, query]);
+  const total = visible.reduce((sum, finding) => sum + presentStorageSize(finding.logicalSize, finding.allocatedSize).displayedBytes, 0);
   const selectedFindings = findings.filter((finding) => selected.has(finding.id));
-  const selectedBytes = selectedFindings.reduce((sum, finding) => sum + (finding.allocatedSize ?? finding.logicalSize), 0);
+  const selectedBytes = selectedFindings.reduce((sum, finding) => sum + presentStorageSize(finding.logicalSize, finding.allocatedSize).displayedBytes, 0);
   const cleanupBusy = cleanup.status === "planning" || cleanup.status === "starting" || cleanup.status === "running";
 
   const toggle = (findingId: string) => {
@@ -86,7 +86,7 @@ export function FindingsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Findings</h1>
           <p className="mt-2 text-sm text-muted">Known, regenerable cache locations with backend evidence and exact cleanup boundaries.</p>
         </div>
-        <div className="text-right"><p className="text-xs text-muted">Visible item size</p><p className="mt-1 text-2xl font-semibold">{formatBytes(total)}</p></div>
+        <div className="text-right"><p className="text-xs text-muted">Visible allocated size</p><p className="mt-1 text-2xl font-semibold">{formatBytes(total)}</p></div>
       </div>
 
       {cleanup.error && <Card className="mt-6 flex items-start gap-3 border-amber-400/20 p-5" role="alert"><TriangleAlert className="shrink-0 text-amber-300" size={19} /><div><p className="font-semibold">Cleanup stopped safely</p><p className="mt-1 text-sm text-muted">{cleanup.error.message}</p></div></Card>}
@@ -119,17 +119,20 @@ export function FindingsPage() {
       ) : visible.length === 0 ? (
         <Card className="mt-5 p-8 text-center text-sm text-muted">No findings match the current filters.</Card>
       ) : (
-        <VirtualizedList className="mt-5 space-y-3 pb-24" items={visible} itemKey={(finding) => finding.id} estimateSize={() => 190} label="Scan findings" renderItem={(finding) => (
+        <VirtualizedList className="mt-5 space-y-3 pb-24" items={visible} itemKey={(finding) => finding.id} estimateSize={() => 210} label="Scan findings" renderItem={(finding) => {
+          const size = presentStorageSize(finding.logicalSize, finding.allocatedSize);
+          return (
             <Card key={finding.id} className="p-5 shadow-none">
               <div className="flex items-start gap-4">
                 <input aria-label={`Select ${finding.displayName}`} checked={selected.has(finding.id)} className="mt-3 size-4 accent-emerald-400" disabled={!finding.cleanupAllowed || cleanupBusy} onChange={() => toggle(finding.id)} type="checkbox" />
                 <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-sage-400/10 text-sage-300"><HardDriveDownload size={19} /></div>
                 <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h2 className="font-semibold">{finding.displayName}</h2><span className="rounded-full bg-sage-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sage-100">{finding.risk}</span></div><p className="mt-1 text-sm leading-5 text-muted">{finding.description}</p><p className="mt-3 truncate font-mono text-xs text-muted">{finding.displayPath}</p></div>
-                <div className="text-right"><p className="font-semibold tabular-nums">{formatBytes(finding.allocatedSize ?? finding.logicalSize)}</p><p className="mt-1 text-xs text-muted">{categoryLabels[finding.category]}</p><Button className="mt-3" variant="ghost" onClick={() => void commands.revealItem(finding.scanId, finding.id)}><ExternalLink size={14} />Reveal</Button></div>
+                <div className="text-right"><p className="font-semibold tabular-nums">{formatBytes(size.displayedBytes)}</p><p className="mt-1 text-xs text-muted">{size.usesAllocatedSize ? "on disk" : categoryLabels[finding.category]}</p>{size.hasDistinctLogicalSize && <p className="mt-1 whitespace-nowrap text-xs text-muted">{formatBytes(size.logicalBytes)} {finding.category === "container" ? "virtual capacity" : "logical size"}</p>}{size.usesAllocatedSize && <p className="mt-1 text-xs text-muted">{categoryLabels[finding.category]}</p>}<Button className="mt-3" variant="ghost" onClick={() => void commands.revealItem(finding.scanId, finding.id)}><ExternalLink size={14} />Reveal</Button></div>
               </div>
               <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted"><ShieldCheck size={13} />{finding.cleanupAllowed ? "Eligible for an immutable, revalidated Trash plan." : finding.cleanupBlockReason}</div>
             </Card>
-          )} />
+          );
+        }} />
       )}
 
       {selected.size > 0 && cleanup.status !== "review" && (

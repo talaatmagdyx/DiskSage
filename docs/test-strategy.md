@@ -34,3 +34,15 @@ Permanent-executor tests cover regular deletion and symlink refusal. Cleanup tes
 ## Phase 7 product gate
 
 Frontend lint, type checks, and production builds cover onboarding, theme application, keyboard routing, focus-trapped dialogs, accessible toasts, error retry actions, and measured list virtualization. Backend tests prove serialized diagnostics omit configured project-root values. The full Rust suite continues to enforce all earlier cleanup gates, and diagnostics export accepts no caller-provided output path.
+
+## Release-candidate controlled UI fixtures
+
+Development-only release-preview scenarios exercise complete React UI flows without reading, moving, or deleting real files. Start `npm run dev`, then open:
+
+- `/cleanup?release-preview=e2e&scenario=trash` for finding selection, immutable review, and successful Trash completion.
+- `/duplicates?release-preview=e2e&scenario=duplicates` for verified grouping, keep-one selection, review, and duplicate Trash completion.
+- `/scan?release-preview=e2e&scenario=cancel` for active scan cancellation and preserved partial-summary messaging.
+- `/scan?release-preview=e2e&scenario=permission` for partial permission denial followed by a successful scan summary.
+- `/applications?release-preview=e2e&scenario=application-permission` for a successful app move with an actionable related-container permission failure.
+
+The fixture command router is compiled into development behavior only. Production builds continue to call Tauri IPC directly. Automated fixture-engine tests live in `src/ipc/releasePreview.test.ts`; release candidates must also click through all five URLs in a browser.

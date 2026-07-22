@@ -13,3 +13,28 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(value >= 100 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
 }
 
+export type StorageSizePresentation = {
+  displayedBytes: number;
+  logicalBytes: number;
+  usesAllocatedSize: boolean;
+  hasDistinctLogicalSize: boolean;
+};
+
+export function presentStorageSize(
+  logicalSize: number,
+  allocatedSize?: number,
+): StorageSizePresentation {
+  const logicalBytes = Number.isFinite(logicalSize) && logicalSize > 0 ? logicalSize : 0;
+  const normalizedAllocated = allocatedSize !== undefined && Number.isFinite(allocatedSize) && allocatedSize >= 0
+    ? allocatedSize
+    : undefined;
+  const usesAllocatedSize = normalizedAllocated !== undefined;
+  const displayedBytes = normalizedAllocated ?? logicalBytes;
+
+  return {
+    displayedBytes,
+    logicalBytes,
+    usesAllocatedSize,
+    hasDistinctLogicalSize: usesAllocatedSize && logicalBytes > displayedBytes,
+  };
+}

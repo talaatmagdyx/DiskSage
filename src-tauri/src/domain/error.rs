@@ -8,6 +8,7 @@ pub enum ErrorCode {
     PathNotFound,
     PathProtected,
     PermissionDenied,
+    ApplicationRunning,
     ScanAlreadyRunning,
     ScanCancelled,
     FilesystemError,
