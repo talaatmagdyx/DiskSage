@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ApplicationUninstallPlan, ApplicationUninstallResult, CleanupSummary, DuplicateGroup, ScanSummary } from "./types";
+import type { ApplicationUninstallPlan, ApplicationUninstallResult, CleanupSummary, DuplicateGroup, OrphanedApplicationData, PermissionReport, ScanSummary, StorageMapReport } from "./types";
 
 async function loadScenario(name: string) {
   window.history.replaceState({}, "", `/?release-preview=e2e&scenario=${name}`);
@@ -94,5 +94,18 @@ describe("controlled release-preview flows", () => {
     expect(groups[0].recommendedKeepId).toBe("fixture-copy-keep");
     expect(summaries[0].items).toHaveLength(1);
     expect(summaries[0].items[0]).toMatchObject({ findingId: "fixture-copy-trash", status: "movedToTrash" });
+  });
+
+  it("provides controlled permission, leftover, and storage-map intelligence", async () => {
+    const preview = await loadScenario("application-permission");
+
+    const permissions = await preview.previewInvoke<PermissionReport>("get_permission_report");
+    const leftovers = await preview.previewInvoke<OrphanedApplicationData[]>("scan_orphaned_application_data");
+    const map = await preview.previewInvoke<StorageMapReport>("scan_storage_map", { request: {} });
+
+    expect(permissions.fullDiskAccessLikely).toBe(false);
+    expect(permissions.locations.some((location) => location.access === "limited")).toBe(true);
+    expect(leftovers.every((item) => item.defaultSelected === false)).toBe(true);
+    expect(map.entries[0]).toMatchObject({ name: "Library", truncated: false });
   });
 });

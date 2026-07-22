@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     domain::{
         error::{CommandError, ErrorCode},
-        finding::{Finding, FindingEvidence, FindingType},
+        finding::{Finding, FindingEvidence, FindingType, GuidedAction},
         rule::RuleCategory,
         scan::{
             ScanPhase, ScanProfile, ScanProfileId, ScanProgress, ScanSummary, StartScanRequest,
@@ -283,9 +283,10 @@ impl ScanManager {
             let baseline_directories = summary.directories_scanned;
             let baseline_bytes = summary.bytes_examined;
             let mut current_path: Option<String> = None;
+            let rule_exclusions = exclusions.with_additional_paths(&rule.excluded_targets);
             let measurement = measure_target(
                 &rule.target,
-                &exclusions,
+                &rule_exclusions,
                 &cancellation,
                 |path, measured| {
                     current_path = Some(display_path(path, &home));
@@ -520,14 +521,28 @@ fn build_finding(
         .check_cleanup_candidate(&rule.target, true)
         .map(|reason| format!("Protected by the {} policy.", reason.reason));
     let cleanup_allowed = policy_block_reason.is_none()
-        && rule.definition.risk == crate::domain::rule::RiskLevel::Safe
+        && matches!(
+            rule.definition.risk,
+            crate::domain::rule::RiskLevel::Safe | crate::domain::rule::RiskLevel::Careful
+        )
         && rule.definition.recommended_action
             == crate::domain::rule::RecommendedAction::MoveToTrash;
     let cleanup_block_reason = if cleanup_allowed {
         None
+    } else if rule.definition.recommended_action
+        == crate::domain::rule::RecommendedAction::GuidedCommand
+    {
+        Some(format!(
+            "{} finding: use the guided owner command; direct filesystem cleanup is unavailable.",
+            match rule.definition.risk {
+                crate::domain::rule::RiskLevel::Careful => "Careful",
+                crate::domain::rule::RiskLevel::Expert => "Expert",
+                crate::domain::rule::RiskLevel::Safe => "Safe",
+            }
+        ))
     } else if rule.definition.risk != crate::domain::rule::RiskLevel::Safe {
         Some(format!(
-            "{} findings are review-only and are never selected automatically.",
+            "{} finding: review-only; direct cleanup is unavailable.",
             match rule.definition.risk {
                 crate::domain::rule::RiskLevel::Careful => "Careful",
                 crate::domain::rule::RiskLevel::Expert => "Expert",
@@ -547,6 +562,7 @@ fn build_finding(
             }
         })
         .unwrap_or(FindingType::Directory);
+    let guided_action = guided_action(&rule.definition.id);
     Finding {
         id: Uuid::new_v4().to_string(),
         scan_id: scan_id.to_owned(),
@@ -566,7 +582,114 @@ fn build_finding(
         evidence,
         cleanup_allowed,
         cleanup_block_reason,
+        guided_action,
     }
+}
+
+fn guided_action(rule_id: &str) -> Option<GuidedAction> {
+    let (title, command, explanation) = match rule_id {
+        "inspection.docker.raw-v1" => (
+            "Inspect Docker usage",
+            "docker system df -v",
+            "Review Docker-owned images, containers, volumes, and build cache before using Docker's own cleanup commands.",
+        ),
+        "inspection.cursor.state-db-v1" => (
+            "Compact Cursor's database",
+            "sqlite3 \"$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb\" \"VACUUM;\"",
+            "Quit Cursor first. VACUUM modifies the database in place and can require substantial temporary free space.",
+        ),
+        "inspection.android.avd-v1" => (
+            "List Android virtual devices",
+            "avdmanager list avd",
+            "Remove unused devices through Android Studio's Device Manager after reviewing this inventory.",
+        ),
+        "inspection.apple.simulators-v1" => (
+            "List Apple simulators",
+            "xcrun simctl list devices",
+            "Use Xcode or simctl to remove only simulator devices you no longer need.",
+        ),
+        "inspection.codex.runtimes-v1" => (
+            "Inspect Codex runtimes",
+            "du -sh \"$HOME/.cache/codex-runtimes\"/*",
+            "Quit Codex before changing managed runtimes; an active task may depend on them.",
+        ),
+        "inspection.playwright.browsers-v1" => (
+            "List Playwright browsers",
+            "npx playwright install --list",
+            "Review installed browsers and persistent MCP profiles before running Playwright's uninstall command.",
+        ),
+        "inspection.claude.sessions-v1" => (
+            "Inspect Claude sessions",
+            "du -sh \"$HOME/Library/Application Support/Claude/local-agent-mode-sessions\"/*",
+            "Quit Claude and identify the active session before removing anything with Claude's own tools.",
+        ),
+        "inspection.claude.vm-bundles-v1" => (
+            "Inspect Claude VM bundles",
+            "du -sh \"$HOME/Library/Application Support/Claude/vm_bundles\"/*",
+            "These bundles power Claude's sandbox. Removing an active bundle can break running tasks.",
+        ),
+        "inspection.runtime.rbenv-v1" => (
+            "List rbenv runtimes",
+            "rbenv versions",
+            "Check project version files before uninstalling a runtime with rbenv.",
+        ),
+        "inspection.runtime.asdf-v1" => (
+            "List asdf runtimes",
+            "asdf list",
+            "Check project tool-version files before uninstalling a runtime with asdf.",
+        ),
+        "inspection.runtime.mise-v1" => (
+            "Preview mise pruning",
+            "mise prune --dry-run",
+            "The dry run identifies unused managed runtimes without deleting them.",
+        ),
+        "inspection.kubernetes.minikube-v1" => (
+            "List minikube profiles",
+            "minikube profile list",
+            "Inspect profile status and persistent workloads before using minikube delete.",
+        ),
+        "inspection.ml.ollama-v1" => (
+            "List Ollama models",
+            "ollama list",
+            "Remove individual models intentionally with ollama rm instead of deleting the model store.",
+        ),
+        "inspection.ml.huggingface-v1" => (
+            "Inspect Hugging Face storage",
+            "du -sh \"$HOME/.cache/huggingface\"/*",
+            "Distinguish downloadable models from private datasets and local checkpoints before cleanup.",
+        ),
+        "inspection.ml.pytorch-v1" => (
+            "Inspect PyTorch storage",
+            "du -sh \"$HOME/.cache/torch\"/*",
+            "Review model weights and compiled artifacts before removing any cache subtree.",
+        ),
+        "inspection.ml.unsloth-v1" => (
+            "Inspect Unsloth storage",
+            "du -sh \"$HOME/.unsloth\"/*",
+            "Keep private training data and checkpoints unless you have verified backups.",
+        ),
+        "inspection.container.colima-v1" => (
+            "Inspect Colima",
+            "colima status",
+            "Review the active profile before using Colima's delete commands.",
+        ),
+        "inspection.container.lima-v1" => (
+            "List Lima instances",
+            "limactl list",
+            "Use limactl to stop and remove only virtual machines you recognize.",
+        ),
+        "inspection.container.orbstack-v1" => (
+            "List OrbStack machines",
+            "orb list",
+            "Use OrbStack's interface or CLI to remove owned containers and machines.",
+        ),
+        _ => return None,
+    };
+    Some(GuidedAction {
+        title: title.to_owned(),
+        command: command.to_owned(),
+        explanation: explanation.to_owned(),
+    })
 }
 
 fn progress_from(summary: &ScanSummary, current_path: Option<String>) -> ScanProgress {
@@ -600,5 +723,53 @@ mod tests {
         let profiles = ScanManager::profiles();
         assert_eq!(profiles.len(), 4);
         assert!(profiles.iter().all(|profile| profile.available));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sparse_virtual_disks_report_allocated_bytes_and_remain_expert_only() {
+        let home = tempfile::tempdir().unwrap();
+        let docker = home
+            .path()
+            .join("Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw");
+        let claude = home
+            .path()
+            .join("Library/Application Support/Claude/vm_bundles/fixture.bundle");
+        std::fs::create_dir_all(docker.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(claude.parent().unwrap()).unwrap();
+        std::fs::File::create(&docker)
+            .unwrap()
+            .set_len(8 * 1024 * 1024 * 1024)
+            .unwrap();
+        std::fs::File::create(&claude)
+            .unwrap()
+            .set_len(4 * 1024 * 1024 * 1024)
+            .unwrap();
+
+        let rules =
+            RulesRegistry.rules_for_scan(ScanProfileId::Developer, home.path(), "macos", &[]);
+        for id in [
+            "inspection.docker.raw-v1",
+            "inspection.claude.vm-bundles-v1",
+        ] {
+            let rule = rules
+                .iter()
+                .find(|rule| rule.definition.id == id)
+                .unwrap()
+                .clone();
+            let measurement = measure_target(
+                &rule.target,
+                &ExclusionMatcher::default(),
+                &CancellationToken::default(),
+                |_, _| {},
+            );
+            let finding = build_finding("fixture-scan", home.path(), "macos", rule, &measurement);
+
+            assert!(measurement.logical_size >= 4 * 1024 * 1024 * 1024);
+            assert!(measurement.allocated_size < measurement.logical_size);
+            assert_eq!(finding.risk, crate::domain::rule::RiskLevel::Expert);
+            assert!(!finding.cleanup_allowed);
+            assert!(finding.guided_action.is_some());
+        }
     }
 }

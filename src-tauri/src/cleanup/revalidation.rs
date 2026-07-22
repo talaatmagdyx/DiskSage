@@ -1,5 +1,8 @@
 use std::{fs, path::Path};
 
+#[cfg(target_os = "macos")]
+use std::process::Command;
+
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -27,23 +30,35 @@ pub fn snapshot_finding(
     rules: &RulesRegistry,
 ) -> Result<CleanupPlanItem, CommandError> {
     if !finding.cleanup_allowed
-        || finding.risk != RiskLevel::Safe
+        || !matches!(finding.risk, RiskLevel::Safe | RiskLevel::Careful)
         || finding.recommended_action != RecommendedAction::MoveToTrash
     {
         return Err(validation_error(
             &finding.path,
-            "The finding is not approved for safe cleanup.",
+            "The finding is not approved for controlled Trash cleanup.",
         ));
     }
+    ensure_rule_owner_not_running(&finding.rule_id, platform, &finding.path)?;
     let resolved = rules
-        .resolve(&finding.rule_id, finding.rule_version, home, platform)
-        .filter(|rule| rule.target == finding.path)
+        .resolve(
+            &finding.rule_id,
+            finding.rule_version,
+            home,
+            platform,
+            &finding.path,
+        )
         .ok_or_else(|| {
             validation_error(
                 &finding.path,
                 "The finding no longer matches a known cleanup rule.",
             )
         })?;
+    validate_cleanup_rule(
+        &finding.path,
+        resolved.definition.risk,
+        resolved.definition.recommended_action,
+        finding.risk,
+    )?;
     validate_path_boundary(&finding.path, &resolved.target, home, platform)?;
     let canonical_path = finding.path.canonicalize().map_err(|error| {
         filesystem_error(&finding.path, "The cleanup item is unavailable.", error)
@@ -92,15 +107,21 @@ pub fn revalidate_item(
     Uuid::parse_str(&item.validation_token).map_err(|_| {
         validation_error(&item.path, "The cleanup item validation token is invalid.")
     })?;
+    ensure_rule_owner_not_running(&item.rule_id, platform, &item.path)?;
     let resolved = rules
-        .resolve(&item.rule_id, item.rule_version, home, platform)
-        .filter(|rule| rule.target == item.path)
+        .resolve(&item.rule_id, item.rule_version, home, platform, &item.path)
         .ok_or_else(|| {
             validation_error(
                 &item.path,
                 "The cleanup item no longer matches its original rule.",
             )
         })?;
+    validate_cleanup_rule(
+        &item.path,
+        resolved.definition.risk,
+        resolved.definition.recommended_action,
+        item.risk,
+    )?;
     validate_path_boundary(&item.path, &resolved.target, home, platform)?;
     let canonical_path = item
         .path
@@ -151,6 +172,105 @@ pub fn revalidate_item(
         return Err(validation_error(
             &item.path,
             "The cleanup item was modified after the plan was created.",
+        ));
+    }
+    Ok(())
+}
+
+fn ensure_rule_owner_not_running(
+    rule_id: &str,
+    platform: &str,
+    path: &Path,
+) -> Result<(), CommandError> {
+    if platform != "macos" {
+        return Ok(());
+    }
+    let Some((owner, markers)) = rule_owner_markers(rule_id) else {
+        return Ok(());
+    };
+    if owner_is_running(markers) {
+        return Err(CommandError::new(
+            ErrorCode::ApplicationRunning,
+            format!(
+                "{owner} is currently running. Quit it completely, then review this cleanup again."
+            ),
+            true,
+        )
+        .with_path(path.to_string_lossy()));
+    }
+    Ok(())
+}
+
+fn rule_owner_markers(rule_id: &str) -> Option<(&'static str, &'static [&'static str])> {
+    if rule_id.starts_with("cache.browser.chrome") {
+        Some(("Google Chrome", &["/Google Chrome.app/Contents/MacOS/"]))
+    } else if rule_id.starts_with("cache.browser.firefox") {
+        Some(("Firefox", &["/Firefox.app/Contents/MacOS/"]))
+    } else if rule_id.contains("cursor") {
+        Some(("Cursor", &["/Cursor.app/Contents/MacOS/"]))
+    } else if rule_id.contains("vscode") {
+        Some((
+            "Visual Studio Code",
+            &["/Visual Studio Code.app/Contents/MacOS/"],
+        ))
+    } else if rule_id.contains("updater.codex") {
+        Some(("Codex", &["/Codex.app/Contents/MacOS/"]))
+    } else if rule_id.contains("claude") {
+        Some(("Claude", &["/Claude.app/Contents/MacOS/"]))
+    } else if rule_id.contains("notion") {
+        Some(("Notion", &["/Notion.app/Contents/MacOS/"]))
+    } else if rule_id.contains("windsurf") {
+        Some(("Windsurf", &["/Windsurf.app/Contents/MacOS/"]))
+    } else if rule_id.contains("capacities") {
+        Some(("Capacities", &["/Capacities.app/Contents/MacOS/"]))
+    } else if rule_id.contains("whimsical") {
+        Some(("Whimsical", &["/Whimsical.app/Contents/MacOS/"]))
+    } else if rule_id.contains("xcode") || rule_id.contains("simulator") {
+        Some(("Xcode", &["/Xcode.app/Contents/MacOS/"]))
+    } else if rule_id.contains("zed") {
+        Some(("Zed", &["/Zed.app/Contents/MacOS/"]))
+    } else if rule_id.contains("android") {
+        Some(("Android Studio", &["/Android Studio.app/Contents/MacOS/"]))
+    } else if rule_id.contains("cypress") {
+        Some(("Cypress", &["/Cypress.app/Contents/MacOS/"]))
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn owner_is_running(markers: &[&str]) -> bool {
+    let Ok(output) = Command::new("ps").args(["-axo", "command="]).output() else {
+        return false;
+    };
+    output.status.success()
+        && process_list_contains_marker(&String::from_utf8_lossy(&output.stdout), markers)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn owner_is_running(_markers: &[&str]) -> bool {
+    false
+}
+
+fn process_list_contains_marker(process_list: &str, markers: &[&str]) -> bool {
+    process_list
+        .lines()
+        .any(|command| markers.iter().any(|marker| command.contains(marker)))
+}
+
+fn validate_cleanup_rule(
+    path: &Path,
+    resolved_risk: RiskLevel,
+    resolved_action: RecommendedAction,
+    expected_risk: RiskLevel,
+) -> Result<(), CommandError> {
+    if resolved_risk != expected_risk
+        || !matches!(resolved_risk, RiskLevel::Safe | RiskLevel::Careful)
+        || resolved_action != RecommendedAction::MoveToTrash
+    {
+        return Err(validation_error(
+            path,
+            "The finding no longer matches an approved Trash cleanup rule.",
         ));
     }
     Ok(())
@@ -268,6 +388,7 @@ mod tests {
             evidence: FindingEvidence::KnownPath,
             cleanup_allowed: true,
             cleanup_block_reason: None,
+            guided_action: None,
         }
     }
 
@@ -349,6 +470,16 @@ mod tests {
             &CancellationToken::default(),
         )
         .is_err());
+    }
+
+    #[test]
+    fn running_application_detection_is_bound_to_known_owner_markers() {
+        let processes = "/Applications/Cursor.app/Contents/MacOS/Cursor --restore\n/Applications/Other.app/Contents/MacOS/Other\n";
+        let (_, cursor_markers) = rule_owner_markers("cache.cursor.cached-data-v1").unwrap();
+        let (_, chrome_markers) = rule_owner_markers("cache.browser.chrome-v1").unwrap();
+        assert!(process_list_contains_marker(processes, cursor_markers));
+        assert!(!process_list_contains_marker(processes, chrome_markers));
+        assert!(rule_owner_markers("cache.uv-v1").is_none());
     }
 
     #[test]

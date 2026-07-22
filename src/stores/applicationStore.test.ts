@@ -132,6 +132,7 @@ describe("applicationStore", () => {
       relatedItemsFailed: 0,
       failedPaths: [],
       failedItems: [],
+      remainingItems: [],
     });
     vi.mocked(commands.scanApplications).mockResolvedValue([second]);
 
@@ -199,6 +200,7 @@ describe("applicationStore", () => {
       relatedItemsFailed: 0,
       failedPaths: [],
       failedItems: [],
+      remainingItems: [],
     });
     vi.mocked(commands.scanApplications).mockResolvedValue([]);
 

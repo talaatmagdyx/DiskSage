@@ -7,6 +7,7 @@ import {
   HardDriveDownload,
   Search,
   ShieldCheck,
+  SquareTerminal,
   Trash2,
   TriangleAlert,
   XCircle,
@@ -45,6 +46,7 @@ export function FindingsPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<RuleCategory | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [expandedGuides, setExpandedGuides] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (summary?.scanId && findings.length === 0 && status === "idle") void load(summary.scanId);
@@ -64,6 +66,10 @@ export function FindingsPage() {
   const total = visible.reduce((sum, finding) => sum + presentStorageSize(finding.logicalSize, finding.allocatedSize).displayedBytes, 0);
   const selectedFindings = findings.filter((finding) => selected.has(finding.id));
   const selectedBytes = selectedFindings.reduce((sum, finding) => sum + presentStorageSize(finding.logicalSize, finding.allocatedSize).displayedBytes, 0);
+  const selectedRisk = selectedFindings.reduce((counts, finding) => {
+    counts[finding.risk] += 1;
+    return counts;
+  }, { safe: 0, careful: 0, expert: 0 });
   const cleanupBusy = cleanup.status === "planning" || cleanup.status === "starting" || cleanup.status === "running";
 
   const toggle = (findingId: string) => {
@@ -76,6 +82,14 @@ export function FindingsPage() {
 
   const createPlan = (action: "moveToTrash" | "permanentDelete") => {
     if (summary?.scanId && selected.size > 0) void cleanup.createPlan(summary.scanId, [...selected], action);
+  };
+
+  const toggleGuide = (findingId: string) => {
+    setExpandedGuides((current) => {
+      const next = new Set(current);
+      if (next.has(findingId)) next.delete(findingId); else next.add(findingId);
+      return next;
+    });
   };
 
   return (
@@ -127,9 +141,10 @@ export function FindingsPage() {
                 <input aria-label={`Select ${finding.displayName}`} checked={selected.has(finding.id)} className="mt-3 size-4 accent-emerald-400" disabled={!finding.cleanupAllowed || cleanupBusy} onChange={() => toggle(finding.id)} type="checkbox" />
                 <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-sage-400/10 text-sage-300"><HardDriveDownload size={19} /></div>
                 <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h2 className="font-semibold">{finding.displayName}</h2><span className="rounded-full bg-sage-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sage-100">{finding.risk}</span></div><p className="mt-1 text-sm leading-5 text-muted">{finding.description}</p><p className="mt-3 truncate font-mono text-xs text-muted">{finding.displayPath}</p></div>
-                <div className="text-right"><p className="font-semibold tabular-nums">{formatBytes(size.displayedBytes)}</p><p className="mt-1 text-xs text-muted">{size.usesAllocatedSize ? "on disk" : categoryLabels[finding.category]}</p>{size.hasDistinctLogicalSize && <p className="mt-1 whitespace-nowrap text-xs text-muted">{formatBytes(size.logicalBytes)} {finding.category === "container" ? "virtual capacity" : "logical size"}</p>}{size.usesAllocatedSize && <p className="mt-1 text-xs text-muted">{categoryLabels[finding.category]}</p>}<Button className="mt-3" variant="ghost" onClick={() => void commands.revealItem(finding.scanId, finding.id)}><ExternalLink size={14} />Reveal</Button></div>
+                <div className="text-right"><p className="font-semibold tabular-nums">{formatBytes(size.displayedBytes)}</p><p className="mt-1 text-xs text-muted">{size.usesAllocatedSize ? "on disk" : categoryLabels[finding.category]}</p>{size.hasDistinctLogicalSize && <p className="mt-1 whitespace-nowrap text-xs text-muted">{formatBytes(size.logicalBytes)} {finding.category === "container" ? "virtual capacity" : "logical size"}</p>}{size.usesAllocatedSize && <p className="mt-1 text-xs text-muted">{categoryLabels[finding.category]}</p>}<Button className="mt-3" variant="ghost" onClick={() => void commands.revealItem(finding.scanId, finding.id)}><ExternalLink size={14} />Reveal</Button>{finding.guidedAction && <Button className="mt-1" variant="ghost" onClick={() => toggleGuide(finding.id)}><SquareTerminal size={14} />{expandedGuides.has(finding.id) ? "Hide guide" : "Guide"}</Button>}</div>
               </div>
-              <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted"><ShieldCheck size={13} />{finding.cleanupAllowed ? "Eligible for an immutable, revalidated Trash plan." : finding.cleanupBlockReason}</div>
+              {finding.guidedAction && expandedGuides.has(finding.id) && <div className="mt-4 rounded-xl border border-sage-400/20 bg-canvas/50 p-4"><p className="text-sm font-semibold">{finding.guidedAction.title}</p><p className="mt-1 text-xs leading-5 text-muted">{finding.guidedAction.explanation}</p><code className="mt-3 block overflow-x-auto rounded-lg border border-line bg-black/20 p-3 text-xs text-sage-100 select-all">{finding.guidedAction.command}</code></div>}
+              <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted"><ShieldCheck size={13} />{finding.cleanupAllowed ? finding.risk === "careful" ? "Manual selection requires a typed confirmation and a fresh Trash revalidation." : "Eligible for an immutable, revalidated Trash plan." : finding.cleanupBlockReason}</div>
             </Card>
           );
         }} />
@@ -137,8 +152,8 @@ export function FindingsPage() {
 
       {selected.size > 0 && cleanup.status !== "review" && (
         <div className="sticky bottom-5 z-20 mt-5 flex items-center justify-between rounded-2xl border border-sage-400/25 bg-panel/95 p-4 shadow-2xl backdrop-blur">
-          <div><p className="font-semibold">{selected.size} safe {selected.size === 1 ? "item" : "items"} selected</p><p className="mt-1 text-xs text-muted">{formatBytes(selectedBytes)} will be reviewed again before anything moves.</p></div>
-          <div className="flex gap-2"><Button disabled={cleanupBusy} onClick={() => createPlan("moveToTrash")}><Trash2 size={16} />{cleanup.status === "planning" ? "Creating plan…" : "Review Trash plan"}</Button>{settings?.permanentDeletionEnabled && <Button disabled={cleanupBusy} onClick={() => createPlan("permanentDelete")} variant="destructive"><Trash2 size={16} />Review permanent delete</Button>}</div>
+          <div><p className="font-semibold">{selected.size} {selected.size === 1 ? "item" : "items"} selected</p><p className="mt-1 text-xs text-muted">{selectedRisk.safe} safe · {selectedRisk.careful} careful · {formatBytes(selectedBytes)} will be revalidated.</p></div>
+          <div className="flex gap-2"><Button disabled={cleanupBusy} onClick={() => createPlan("moveToTrash")}><Trash2 size={16} />{cleanup.status === "planning" ? "Creating plan…" : "Review Trash plan"}</Button>{settings?.permanentDeletionEnabled && selectedRisk.careful === 0 && <Button disabled={cleanupBusy} onClick={() => createPlan("permanentDelete")} variant="destructive"><Trash2 size={16} />Review permanent delete</Button>}</div>
         </div>
       )}
 

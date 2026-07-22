@@ -47,6 +47,7 @@ struct StoredPlan {
     public: ApplicationUninstallPlan,
     identity: FileIdentity,
     related_items: Vec<PlannedRelatedItem>,
+    verification_items: Vec<PlannedRelatedItem>,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +65,25 @@ pub struct ApplicationManager {
 }
 
 impl ApplicationManager {
+    pub fn installed_bundle_ids(&self) -> Result<HashSet<String>, CommandError> {
+        let inventory = self
+            .inventory
+            .lock()
+            .map_err(|_| CommandError::internal("application inventory lock poisoned"))?;
+        Ok(inventory
+            .values()
+            .filter_map(|entry| entry.application.bundle_id.clone())
+            .collect())
+    }
+
+    pub fn inventory_is_empty(&self) -> Result<bool, CommandError> {
+        Ok(self
+            .inventory
+            .lock()
+            .map_err(|_| CommandError::internal("application inventory lock poisoned"))?
+            .is_empty())
+    }
+
     pub fn application(&self, application_id: &str) -> Result<InstalledApplication, CommandError> {
         self.inventory
             .lock()
@@ -144,14 +164,15 @@ impl ApplicationManager {
         }
         revalidate_application_identity(&entry.identity)?;
         ensure_application_not_running(&entry.application, &entry.identity.canonical_path)?;
+        let verification_items = discover_related_items(&entry.application, home, true);
         let related_items = match mode {
             ApplicationUninstallMode::AppOnly => Vec::new(),
-            ApplicationUninstallMode::Complete => {
-                discover_related_items(&entry.application, home, false)
-            }
-            ApplicationUninstallMode::DeepCleanup => {
-                discover_related_items(&entry.application, home, true)
-            }
+            ApplicationUninstallMode::Complete => verification_items
+                .iter()
+                .filter(|item| item.public.confidence == RelatedItemConfidence::Identified)
+                .cloned()
+                .collect(),
+            ApplicationUninstallMode::DeepCleanup => verification_items.clone(),
         };
         let public_related_items: Vec<_> = related_items
             .iter()
@@ -185,6 +206,7 @@ impl ApplicationManager {
             public: plan.clone(),
             identity: entry.identity,
             related_items,
+            verification_items,
         };
         let mut plans = self
             .plans
@@ -262,6 +284,12 @@ impl ApplicationManager {
         if let Ok(mut inventory) = self.inventory.lock() {
             inventory.remove(&application.id);
         }
+        let remaining_items = stored
+            .verification_items
+            .iter()
+            .filter(|item| item.identity.canonical_path.exists())
+            .map(|item| item.public.clone())
+            .collect();
         Ok(ApplicationUninstallResult {
             application_id: application.id.clone(),
             name: application.name.clone(),
@@ -285,6 +313,7 @@ impl ApplicationManager {
             related_items_failed: failed_paths.len() as u64,
             failed_paths,
             failed_items,
+            remaining_items,
         })
     }
 

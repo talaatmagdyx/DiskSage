@@ -17,9 +17,12 @@ import type {
  DiagnosticsExport,
   Finding,
   InstalledApplication,
+  OrphanedApplicationData,
+  PermissionReport,
   ScanProfile,
   ScanProfileId,
   ScanSummary,
+  StorageMapReport,
 } from "./types";
 
 const releasePreviewMode = import.meta.env.DEV ? new URLSearchParams(window.location.search).get("release-preview") : null;
@@ -37,6 +40,12 @@ export const commands = {
     invokeCommand<InstalledApplication[]>("scan_applications", { includeSystemApps }),
   revealApplication: (applicationId: string) =>
     invokeCommand<void>("reveal_application", { request: { applicationId } }),
+  getPermissionReport: () => invokeCommand<PermissionReport>("get_permission_report"),
+  openFullDiskAccessSettings: () => invokeCommand<void>("open_full_disk_access_settings"),
+  scanOrphanedApplicationData: () =>
+    invokeCommand<OrphanedApplicationData[]>("scan_orphaned_application_data"),
+  scanStorageMap: (root?: string) =>
+    invokeCommand<StorageMapReport>("scan_storage_map", { request: { root } }),
   createApplicationUninstallPlan: (applicationId: string, mode: ApplicationUninstallMode) =>
     invokeCommand<ApplicationUninstallPlan>("create_application_uninstall_plan", {
       request: { applicationId, mode },

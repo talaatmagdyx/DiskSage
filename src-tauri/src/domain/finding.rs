@@ -25,6 +25,14 @@ pub enum FindingEvidence {
     PackageManagerCache { manager: String },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GuidedAction {
+    pub title: String,
+    pub command: String,
+    pub explanation: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Finding {
@@ -46,4 +54,6 @@ pub struct Finding {
     pub evidence: FindingEvidence,
     pub cleanup_allowed: bool,
     pub cleanup_block_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guided_action: Option<GuidedAction>,
 }

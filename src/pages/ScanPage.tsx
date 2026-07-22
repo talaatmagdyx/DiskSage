@@ -99,7 +99,7 @@ export function ScanPage() {
             <ProgressMetric label="Directories" value={(summary?.directoriesScanned ?? progress?.directoriesScanned ?? 0).toLocaleString()} />
             <ProgressMetric label="Examined" value={formatBytes(summary?.bytesExamined ?? progress?.bytesExamined ?? 0)} />
             <ProgressMetric label="Findings" value={(summary?.findingsCount ?? progress?.findingsCount ?? 0).toLocaleString()} />
-            <ProgressMetric label="Reclaimable" value={formatBytes(summary?.reclaimableBytes ?? progress?.reclaimableBytes ?? 0)} />
+            <ProgressMetric label="Estimated reclaimable" value={formatBytes(summary?.reclaimableBytes ?? progress?.reclaimableBytes ?? 0)} />
           </div>
           <div className="flex min-h-12 items-center gap-3 px-6 py-3 text-xs text-muted" aria-live="polite">
             {active ? <LoaderCircle className="animate-spin text-sage-300" size={15} /> : summary?.phase === "cancelled" ? <StopCircle className="text-amber-300" size={15} /> : <CheckCircle2 className="text-sage-300" size={15} />}
@@ -109,7 +109,7 @@ export function ScanPage() {
         </Card>
       )}
 
-      <p className="mt-5 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={14} /> Scanning never triggers cleanup. Every finding requires a later review and immutable cleanup plan.</p>
+      <p className="mt-5 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={14} /> Scanning never triggers cleanup. Reclaimable uses allocated bytes from eligible findings; Trash retention and APFS snapshots can delay the free-space change.</p>
     </div>
   );
 }

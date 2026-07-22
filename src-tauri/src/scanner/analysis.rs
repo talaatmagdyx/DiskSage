@@ -236,6 +236,7 @@ fn classify_file(
         cleanup_block_reason: Some(
             "Analysis suggestions are review-only and are never cleanup-authorized.".to_owned(),
         ),
+        guided_action: None,
     })
 }
 

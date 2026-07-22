@@ -7,6 +7,8 @@ import type {
   ApplicationUninstallMode,
   CommandError,
   InstalledApplication,
+  OrphanedApplicationData,
+  PermissionReport,
 } from "../ipc/types";
 
 type ApplicationStatus =
@@ -26,6 +28,10 @@ type ApplicationState = {
   activeApplicationId: string | null;
   plan: ApplicationUninstallPlan | null;
   result: ApplicationUninstallResult | null;
+  permissionReport: PermissionReport | null;
+  permissionStatus: "idle" | "checking" | "ready" | "error";
+  orphanedData: OrphanedApplicationData[];
+  orphanStatus: "idle" | "scanning" | "ready" | "error";
   retryUninstallContext: { applicationId: string; mode: ApplicationUninstallMode } | null;
   scan: (includeSystemApps?: boolean) => Promise<void>;
   reveal: (applicationId: string) => Promise<void>;
@@ -33,6 +39,9 @@ type ApplicationState = {
   dismissPlan: () => void;
   executePlan: (selectedRelatedItemIds?: string[], typedConfirmation?: string) => Promise<void>;
   retryUninstall: () => Promise<void>;
+  checkPermissions: () => Promise<void>;
+  openPermissionSettings: () => Promise<void>;
+  scanOrphanedData: () => Promise<void>;
   clearResult: () => void;
 };
 
@@ -44,6 +53,10 @@ export const useApplicationStore = create<ApplicationState>((set, get) => ({
   activeApplicationId: null,
   plan: null,
   result: null,
+  permissionReport: null,
+  permissionStatus: "idle",
+  orphanedData: [],
+  orphanStatus: "idle",
   retryUninstallContext: null,
   scan: async (includeSystemApps = get().includeSystemApps) => {
     set({ status: "scanning", error: null, plan: null, activeApplicationId: null, retryUninstallContext: null, includeSystemApps });
@@ -123,6 +136,31 @@ export const useApplicationStore = create<ApplicationState>((set, get) => ({
     const context = get().retryUninstallContext;
     if (!context) return;
     await get().reviewUninstall(context.applicationId, context.mode);
+  },
+  checkPermissions: async () => {
+    set({ permissionStatus: "checking", error: null });
+    try {
+      const permissionReport = await commands.getPermissionReport();
+      set({ permissionReport, permissionStatus: "ready" });
+    } catch (error) {
+      set({ permissionStatus: "error", error: normalizeCommandError(error) });
+    }
+  },
+  openPermissionSettings: async () => {
+    try {
+      await commands.openFullDiskAccessSettings();
+    } catch (error) {
+      set({ error: normalizeCommandError(error) });
+    }
+  },
+  scanOrphanedData: async () => {
+    set({ orphanStatus: "scanning", error: null });
+    try {
+      const orphanedData = await commands.scanOrphanedApplicationData();
+      set({ orphanedData, orphanStatus: "ready" });
+    } catch (error) {
+      set({ orphanStatus: "error", error: normalizeCommandError(error) });
+    }
   },
   clearResult: () => set({ result: null }),
 }));

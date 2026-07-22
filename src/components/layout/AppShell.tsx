@@ -7,7 +7,8 @@ import {
   Settings,
   ShieldCheck,
  Sparkles,
- Keyboard,
+  Keyboard,
+  Map,
  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,7 @@ const links = [
   { to: "/cleanup", label: "Findings", icon: Sparkles },
   { to: "/duplicates", label: "Duplicates", icon: Files },
   { to: "/applications", label: "Applications", icon: AppWindow },
+  { to: "/storage-map", label: "Storage Map", icon: Map },
   { to: "/history", label: "History", icon: History },
 ];
 

@@ -39,6 +39,14 @@ impl ExclusionMatcher {
                 .any(|excluded| candidate.starts_with(excluded))
         })
     }
+
+    pub fn with_additional_paths(&self, paths: &[PathBuf]) -> Self {
+        let mut combined = self.paths.clone();
+        combined.extend(paths.iter().filter_map(|path| normalize(path)));
+        combined.sort();
+        combined.dedup();
+        Self { paths: combined }
+    }
 }
 
 fn normalize(path: &Path) -> Option<PathBuf> {

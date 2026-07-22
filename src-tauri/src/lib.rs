@@ -4,6 +4,7 @@ pub mod cleanup;
 pub mod commands;
 pub mod domain;
 pub mod duplicates;
+pub mod intelligence;
 pub mod observability;
 pub mod persistence;
 pub mod platform;
@@ -37,6 +38,10 @@ pub fn run() {
             commands::applications::reveal_application,
             commands::applications::create_application_uninstall_plan,
             commands::applications::execute_application_uninstall_plan,
+            commands::intelligence::get_permission_report,
+            commands::intelligence::open_full_disk_access_settings,
+            commands::intelligence::scan_orphaned_application_data,
+            commands::intelligence::scan_storage_map,
             commands::app::get_app_info,
             commands::diagnostics::export_diagnostics,
             commands::disk::list_disks,

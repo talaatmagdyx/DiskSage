@@ -117,4 +117,5 @@ pub struct ApplicationUninstallResult {
     pub related_items_failed: u64,
     pub failed_paths: Vec<String>,
     pub failed_items: Vec<ApplicationUninstallFailure>,
+    pub remaining_items: Vec<RelatedApplicationItem>,
 }

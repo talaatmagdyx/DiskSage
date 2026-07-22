@@ -111,10 +111,24 @@ impl CleanupManager {
             items.push(item);
         }
 
+        if request.action == CleanupAction::PermanentDelete && risk_summary.careful > 0 {
+            return Err(CommandError::new(
+                ErrorCode::CommandUnavailable,
+                "Careful findings can only be moved to Trash.",
+                true,
+            ));
+        }
+
         let created_at = Utc::now();
-        let required_confirmation_phrase = (request.action == CleanupAction::PermanentDelete
-            && risk_summary.expert > 0)
-            .then(|| format!("DELETE {} EXPERT ITEMS", risk_summary.expert));
+        let required_confirmation_phrase = if risk_summary.careful > 0 {
+            Some(format!(
+                "MOVE {} CAREFUL ITEMS TO TRASH",
+                risk_summary.careful
+            ))
+        } else {
+            (request.action == CleanupAction::PermanentDelete && risk_summary.expert > 0)
+                .then(|| format!("DELETE {} EXPERT ITEMS", risk_summary.expert))
+        };
         let plan = CleanupPlan {
             id: Uuid::new_v4().to_string(),
             created_at,
@@ -287,7 +301,7 @@ impl CleanupManager {
             if request.typed_confirmation.as_deref() != Some(required.as_str()) {
                 return Err(CommandError::new(
                     ErrorCode::PlanValidationFailed,
-                    "The expert permanent-delete confirmation phrase did not match.",
+                    "The required cleanup confirmation phrase did not match.",
                     false,
                 ));
             }
@@ -554,6 +568,7 @@ mod tests {
                 evidence: FindingEvidence::KnownPath,
                 cleanup_allowed: true,
                 cleanup_block_reason: None,
+                guided_action: None,
             })
             .unwrap();
         let manager = CleanupManager::new(
@@ -588,6 +603,96 @@ mod tests {
             )
             .unwrap();
         assert_eq!(permanent_plan.action, CleanupAction::PermanentDelete);
+    }
+
+    #[test]
+    fn careful_findings_require_typed_trash_confirmation_and_block_permanent_delete() {
+        let directory = tempfile::tempdir().unwrap();
+        let home = directory.path().join("home");
+        let path = home.join(".cache/JetBrains");
+        fs::create_dir_all(&path).unwrap();
+        fs::write(path.join("index"), b"cache").unwrap();
+        let scan_repository = ScanRepository::new(directory.path().join("scans"));
+        let scan_id = Uuid::new_v4().to_string();
+        scan_repository.initialize(&scan_id).unwrap();
+        scan_repository
+            .save_summary(&ScanSummary {
+                scan_id: scan_id.clone(),
+                profile: ScanProfileId::Developer,
+                phase: ScanPhase::Completed,
+                started_at: Utc::now().to_rfc3339(),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                files_scanned: 1,
+                directories_scanned: 1,
+                bytes_examined: 5,
+                findings_count: 1,
+                reclaimable_bytes: 5,
+                skipped_count: 0,
+                permission_denied_count: 0,
+                elapsed_ms: 1,
+                errors: Vec::new(),
+            })
+            .unwrap();
+        let finding_id = Uuid::new_v4().to_string();
+        scan_repository
+            .append_finding(&Finding {
+                id: finding_id.clone(),
+                scan_id: scan_id.clone(),
+                rule_id: "inspection.ide.jetbrains-cache-v1".to_owned(),
+                rule_version: 1,
+                category: RuleCategory::ApplicationCache,
+                display_name: "JetBrains IDE caches".to_owned(),
+                description: "fixture".to_owned(),
+                path: path.clone(),
+                display_path: path.to_string_lossy().into_owned(),
+                item_type: FindingType::Directory,
+                logical_size: 5,
+                allocated_size: Some(4096),
+                modified_at: None,
+                risk: RiskLevel::Careful,
+                recommended_action: RecommendedAction::MoveToTrash,
+                evidence: FindingEvidence::KnownPath,
+                cleanup_allowed: true,
+                cleanup_block_reason: None,
+                guided_action: None,
+            })
+            .unwrap();
+        let manager = CleanupManager::new(
+            scan_repository,
+            HistoryRepository::new(directory.path().join("history.ndjson")),
+        );
+
+        let plan = manager
+            .create_plan(
+                CreateCleanupPlanRequest {
+                    scan_id: scan_id.clone(),
+                    finding_ids: vec![finding_id.clone()],
+                    action: CleanupAction::MoveToTrash,
+                },
+                &home,
+                "linux",
+                false,
+            )
+            .unwrap();
+        assert_eq!(plan.risk_summary.careful, 1);
+        assert_eq!(
+            plan.required_confirmation_phrase.as_deref(),
+            Some("MOVE 1 CAREFUL ITEMS TO TRASH")
+        );
+
+        let error = manager
+            .create_plan(
+                CreateCleanupPlanRequest {
+                    scan_id,
+                    finding_ids: vec![finding_id],
+                    action: CleanupAction::PermanentDelete,
+                },
+                &home,
+                "linux",
+                true,
+            )
+            .unwrap_err();
+        assert_eq!(error.code, ErrorCode::CommandUnavailable);
     }
 
     #[test]

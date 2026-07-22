@@ -173,6 +173,7 @@ mod tests {
             evidence: FindingEvidence::KnownPath,
             cleanup_allowed: false,
             cleanup_block_reason: Some("Phase 2 is read-only".to_owned()),
+            guided_action: None,
         }
     }
 

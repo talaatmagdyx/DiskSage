@@ -13,10 +13,13 @@ import type {
   DuplicateSummary,
   Finding,
   InstalledApplication,
+  OrphanedApplicationData,
+  PermissionReport,
   ScanProfile,
   ScanProfileId,
   ScanProgress,
   ScanSummary,
+  StorageMapReport,
 } from "./types";
 
 const parameters = new URLSearchParams(window.location.search);
@@ -109,6 +112,54 @@ const trashFinding: Finding = {
   evidence: { kind: "knownPath" },
   cleanupAllowed: true,
 };
+
+const carefulFinding: Finding = {
+  id: "fixture-careful-cache",
+  scanId: trashScanId,
+  ruleId: "inspection.ide.xcode-derived-data-v1",
+  ruleVersion: 1,
+  category: "buildArtifact",
+  displayName: "Xcode DerivedData",
+  description: "Regenerable Xcode build and index output. Quit Xcode first; manual selection requires Careful confirmation and the next build may be slower.",
+  path: "/Fixture/Library/Developer/Xcode/DerivedData",
+  displayPath: "~/Library/Developer/Xcode/DerivedData",
+  itemType: "directory",
+  logicalSize: 6_012_954_624,
+  allocatedSize: 5_905_580_032,
+  modifiedAt: now,
+  risk: "careful",
+  recommendedAction: "moveToTrash",
+  evidence: { kind: "knownPath" },
+  cleanupAllowed: true,
+};
+
+const expertFinding: Finding = {
+  id: "fixture-expert-docker",
+  scanId: trashScanId,
+  ruleId: "inspection.docker.raw-v1",
+  ruleVersion: 1,
+  category: "container",
+  displayName: "Docker Desktop virtual disk",
+  description: "Docker Desktop virtual disk inspection only. Review Docker-owned usage; DiskSage never removes Docker.raw directly.",
+  path: "/Fixture/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw",
+  displayPath: "~/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw",
+  itemType: "file",
+  logicalSize: 137_438_953_472,
+  allocatedSize: 19_757_629_440,
+  modifiedAt: now,
+  risk: "expert",
+  recommendedAction: "guidedCommand",
+  evidence: { kind: "knownPath" },
+  cleanupAllowed: false,
+  cleanupBlockReason: "Expert finding: use the guided owner command; direct filesystem cleanup is unavailable.",
+  guidedAction: {
+    title: "Inspect Docker usage",
+    command: "docker system df -v",
+    explanation: "Review Docker-owned images, containers, volumes, and build cache before using Docker's own cleanup commands.",
+  },
+};
+
+const previewFindings = [expertFinding, carefulFinding, trashFinding];
 
 function scanSummary(scanId: string, profile: ScanProfileId, phase: ScanSummary["phase"], permissionDeniedCount = 0): ScanSummary {
   return {
@@ -220,7 +271,7 @@ export async function bootstrapPreviewScenario() {
     import("../stores/findingsStore"),
     import("../stores/scanStore"),
   ]);
-  useFindingsStore.setState({ scanId: trashScanId, findings: [trashFinding], status: "ready", error: null });
+  useFindingsStore.setState({ scanId: trashScanId, findings: previewFindings, status: "ready", error: null });
   useScanStore.setState({ scanId: trashScanId, status: "completed", progress: null, summary: trashSummary, error: null });
 }
 
@@ -242,6 +293,50 @@ export async function previewInvoke<T>(command: string, args?: Record<string, un
     return previewApplications.filter((application) => includeSystemApps || application.scope !== "system") as T;
   }
   if (command === "reveal_application") return undefined as T;
+  if (command === "get_permission_report") {
+    const report: PermissionReport = {
+      checkedAt: now,
+      fullDiskAccessLikely: scenario !== "application-permission",
+      locations: [
+        { label: "Home folder", displayPath: "~", access: "available", guidance: "Readable now." },
+        { label: "Application Support", displayPath: "~/Library/Application Support", access: "available", guidance: "Readable now." },
+        { label: "App Containers", displayPath: "~/Library/Containers", access: scenario === "application-permission" ? "limited" : "available", guidance: scenario === "application-permission" ? "Grant DiskSage Full Disk Access, then check again." : "Readable now. macOS can still require approval for individual protected items." },
+        { label: "Shared Group Containers", displayPath: "~/Library/Group Containers", access: "available", guidance: "Readable now. macOS can still require approval for individual protected items." },
+      ],
+      note: "This is a read-only access check, not a macOS authorization guarantee.",
+    };
+    return report as T;
+  }
+  if (command === "open_full_disk_access_settings") return undefined as T;
+  if (command === "scan_orphaned_application_data") {
+    const leftovers: OrphanedApplicationData[] = [
+      { id: "orphan-cache", path: "/Users/fixture/Library/Caches/com.example.retired", displayPath: "~/Library/Caches/com.example.retired", identifier: "com.example.retired", category: "Cache", logicalSize: 681_574_400, allocatedSize: 650_117_120, reason: "No currently scanned application directly matches this directory name. Ownership is uncertain, so this item is review-only and never selected automatically.", defaultSelected: false },
+      { id: "orphan-container", path: "/Users/fixture/Library/Containers/com.example.oldnotes", displayPath: "~/Library/Containers/com.example.oldnotes", identifier: "com.example.oldnotes", category: "Container", logicalSize: 188_743_680, allocatedSize: 176_160_768, reason: "No currently scanned application directly matches this container identifier. Ownership is uncertain, so this item is review-only and never selected automatically.", defaultSelected: false },
+    ];
+    return leftovers as T;
+  }
+  if (command === "scan_storage_map") {
+    const request = args?.request as { root?: string } | undefined;
+    const root = request?.root ?? "/Users/fixture";
+    const report: StorageMapReport = {
+      root,
+      displayRoot: request?.root ? "~/Documents" : "~",
+      logicalSize: 146_028_888_064,
+      allocatedSize: 131_533_373_440,
+      filesScanned: 82_418,
+      directoriesScanned: 9_122,
+      permissionDeniedCount: scenario === "permission" ? 2 : 0,
+      truncated: false,
+      elapsedMs: 1842,
+      note: "Allocated size reflects blocks currently used by analyzed files. It is not a cleanup recommendation, and APFS snapshots or Trash retention can delay free-space changes.",
+      entries: [
+        { id: "map-library", name: "Library", path: `${root}/Library`, displayPath: "~/Library", logicalSize: 82_887_352_320, allocatedSize: 76_188_680_192, filesScanned: 52_940, directoriesScanned: 6_182, permissionDeniedCount: 0, truncated: false },
+        { id: "map-documents", name: "Documents", path: `${root}/Documents`, displayPath: "~/Documents", logicalSize: 38_654_705_664, allocatedSize: 34_359_738_368, filesScanned: 18_241, directoriesScanned: 1_820, permissionDeniedCount: 0, truncated: false },
+        { id: "map-downloads", name: "Downloads", path: `${root}/Downloads`, displayPath: "~/Downloads", logicalSize: 24_486_830_080, allocatedSize: 20_984_954_880, filesScanned: 11_237, directoriesScanned: 1_120, permissionDeniedCount: scenario === "permission" ? 2 : 0, truncated: false },
+      ],
+    };
+    return report as T;
+  }
   if (command === "create_application_uninstall_plan") {
     const request = args?.request as { applicationId?: string; mode?: "appOnly" | "complete" | "deepCleanup" } | undefined;
     const application = previewApplications.find((item) => item.id === request?.applicationId);
@@ -298,6 +393,18 @@ export async function previewInvoke<T>(command: string, args?: Record<string, un
       relatedItemsFailed: failedItems.length,
       failedPaths: failedItems.map((item) => item.displayPath),
       failedItems,
+      remainingItems: failedItems.map((item) => ({
+        id: "remaining-container",
+        path: "/Users/fixture/Library/Containers/com.example.samplestudio",
+        displayPath: item.displayPath,
+        category: "Container",
+        logicalSize: 33_554_432,
+        allocatedSize: 31_457_280,
+        mayContainUserData: true,
+        confidence: "identified",
+        defaultSelected: false,
+        reason: "The post-uninstall verification found this item still on disk.",
+      })),
     };
     return result as T;
   }
@@ -328,7 +435,7 @@ export async function previewInvoke<T>(command: string, args?: Record<string, un
     return undefined as T;
   }
   if (command === "get_scan_status") return (scenario === "trash" ? trashSummary : scanSummary(activeScanId, activeScanProfile, "completed", scenario === "permission" ? 2 : 0)) as T;
-  if (command === "get_scan_findings") return (scenario === "trash" ? [trashFinding] : []) as T;
+  if (command === "get_scan_findings") return (scenario === "trash" ? previewFindings : []) as T;
   if (command === "reveal_item") return undefined as T;
 
   if (command === "create_cleanup_plan") {

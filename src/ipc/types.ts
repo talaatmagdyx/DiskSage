@@ -153,6 +153,11 @@ export type Finding = {
   evidence: { kind: string; [key: string]: unknown };
   cleanupAllowed: boolean;
   cleanupBlockReason?: string;
+  guidedAction?: {
+    title: string;
+    command: string;
+    explanation: string;
+  };
 };
 
 export type CleanupAction = "moveToTrash" | "permanentDelete";
@@ -368,4 +373,60 @@ export type ApplicationUninstallResult = {
     code: ErrorCode;
     message: string;
   }>;
+  remainingItems: RelatedApplicationItem[];
+};
+
+export type PermissionAccess = "available" | "limited" | "notPresent";
+
+export type PermissionLocation = {
+  label: string;
+  displayPath: string;
+  access: PermissionAccess;
+  guidance: string;
+};
+
+export type PermissionReport = {
+  checkedAt: string;
+  fullDiskAccessLikely: boolean;
+  locations: PermissionLocation[];
+  note: string;
+};
+
+export type OrphanedApplicationData = {
+  id: string;
+  path: string;
+  displayPath: string;
+  identifier: string;
+  category: string;
+  logicalSize: number;
+  allocatedSize: number;
+  reason: string;
+  defaultSelected: false;
+};
+
+export type StorageMapEntry = {
+  id: string;
+  name: string;
+  path: string;
+  displayPath: string;
+  logicalSize: number;
+  allocatedSize: number;
+  filesScanned: number;
+  directoriesScanned: number;
+  permissionDeniedCount: number;
+  truncated: boolean;
+};
+
+export type StorageMapReport = {
+  root: string;
+  displayRoot: string;
+  entries: StorageMapEntry[];
+  logicalSize: number;
+  allocatedSize: number;
+  filesScanned: number;
+  directoriesScanned: number;
+  permissionDeniedCount: number;
+  truncated: boolean;
+  elapsedMs: number;
+  note: string;
 };

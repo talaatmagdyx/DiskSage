@@ -65,7 +65,7 @@ export function CleanupReviewDialog({
           <p>{permanent ? "This action cannot be undone. Each item is revalidated immediately before deletion, and no destructive retry is attempted. Changed, missing, linked, or protected items are skipped." : "Each item is revalidated immediately before it moves. Changed, missing, linked, or protected items are skipped. Trash can be restored; disk space may not increase until Trash is emptied."}</p>
         </div>
 
-        {plan.requiredConfirmationPhrase && <label className="mt-4 grid gap-2 text-sm"><span>Type <strong className="font-mono text-red-200">{plan.requiredConfirmationPhrase}</strong> to confirm expert-risk deletion.</span><input autoComplete="off" className="control border-red-400/30 font-mono" value={typedConfirmation} onChange={(event) => setTypedConfirmation(event.target.value)} /></label>}
+        {plan.requiredConfirmationPhrase && <label className="mt-4 grid gap-2 text-sm"><span>Type <strong className={`font-mono ${permanent ? "text-red-200" : "text-amber-200"}`}>{plan.requiredConfirmationPhrase}</strong> to confirm this higher-risk cleanup.</span><input autoComplete="off" className={`control font-mono ${permanent ? "border-red-400/30" : "border-amber-400/30"}`} value={typedConfirmation} onChange={(event) => setTypedConfirmation(event.target.value)} /></label>}
 
         <div className="mt-6 flex justify-end gap-3">
           <Button disabled={busy} onClick={onCancel} variant="secondary">Keep everything</Button>
