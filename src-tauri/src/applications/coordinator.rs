@@ -448,7 +448,7 @@ fn scan_windows_applications(
     const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall";
     let mut entries = Vec::new();
     collect_windows_registry_apps(
-        &HKCU,
+        HKCU,
         UNINSTALL_KEY,
         KEY_READ,
         ApplicationScope::User,
@@ -458,7 +458,7 @@ fn scan_windows_applications(
     );
     for access in [KEY_READ | KEY_WOW64_64KEY, KEY_READ | KEY_WOW64_32KEY] {
         collect_windows_registry_apps(
-            &HKLM,
+            HKLM,
             UNINSTALL_KEY,
             access,
             ApplicationScope::Shared,
