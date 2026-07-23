@@ -117,7 +117,7 @@ DiskSage complements filesystem explorers. Storage Map tells you **where** space
 DiskSage is currently a **pre-release project**. Release workflows target:
 
 - macOS 10.15 or later: Apple silicon and Intel DMGs
-- Ubuntu 22.04 or a compatible modern Linux distribution: AppImage and Debian package
+- Linux x86_64 and ARM64: AppImage, Debian, and RPM packages
 
 Public macOS artifacts are expected to be Developer ID signed, notarized, and stapled. Development builds are unsigned. See [INSTALL.md](INSTALL.md) for install, upgrade, uninstall, and source-build details.
 

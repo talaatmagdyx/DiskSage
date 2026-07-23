@@ -13,7 +13,7 @@ Open the DMG and drag DiskSage to Applications. Public release artifacts are exp
 
 ## Linux AppImage
 
-Download the x86_64 AppImage, then run:
+Download the AppImage matching your architecture (`amd64`/`x86_64` or `aarch64`/ARM64), then run:
 
 ```sh
 chmod +x DiskSage_*.AppImage
@@ -24,13 +24,23 @@ The AppImage is built on Ubuntu 22.04 to maintain a conservative glibc baseline.
 
 ## Debian package
 
-Download the amd64 `.deb`, then run:
+Download the `.deb` matching your architecture, then run:
 
 ```sh
-sudo apt install ./DiskSage_*_amd64.deb
+sudo apt install ./DiskSage_*.deb
 ```
 
 The package installs a desktop entry and application icon. Runtime WebKitGTK dependencies are resolved by the package manager.
+
+## RPM package
+
+On Fedora, RHEL, or a compatible RPM-based distribution, download the `.rpm` matching your architecture, then run:
+
+```sh
+sudo dnf install ./DiskSage-*.rpm
+```
+
+The AppImage remains the broadest preview option for other modern Linux distributions.
 
 ## Upgrades
 
