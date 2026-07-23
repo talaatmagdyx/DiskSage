@@ -11,7 +11,7 @@ jobs:
   validate:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -19,6 +19,23 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           npm run release:check -- "$VERSION"
+      - name: Verify macOS signing and notarization secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required release secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
 
   publish:
     needs: validate
@@ -37,7 +54,7 @@ jobs:
             args: --bundles appimage,deb
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
         run: |
@@ -55,6 +72,7 @@ jobs:
           workspaces: ./src-tauri -> target
       - run: npm ci
       - name: Build, sign, notarize, and upload release artifacts
+        id: tauri
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,4 +88,8 @@ jobs:
           releaseBody: See CHANGELOG.md for release notes and INSTALL.md for installation instructions.
           releaseDraft: true
           prerelease: false
+          generateReleaseNotes: true
+          retryAttempts: 2
+          uploadUpdaterJson: false
+          releaseAssetNamePattern: DiskSage_[version]_[platform]_[arch].[ext]
           args: ${{ matrix.args }}

@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="https://talaatmagdyx.github.io/DiskSage/">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#product-tour">Product tour</a> ·
   <a href="#the-safety-model">Safety model</a> ·

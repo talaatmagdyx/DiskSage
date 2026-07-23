@@ -1,0 +1,10 @@
+{
+  "name": "DiskSage",
+  "short_name": "DiskSage",
+  "description": "The intelligent disk cleaner for developers and power users.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07110e",
+  "theme_color": "#07110e",
+  "icons": [{ "src": "assets/app-icon.png", "sizes": "512x512", "type": "image/png" }]
+}

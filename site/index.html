@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#07110e">
+    <meta name="description" content="DiskSage is the intelligent, local-first disk cleaner for developers and power users. Understand every recommendation. Clean only what you trust.">
+    <meta name="keywords" content="disk cleaner, macOS disk space, Linux disk analyzer, developer cache cleaner, duplicate finder, Tauri, Rust">
+    <meta name="author" content="DiskSage contributors">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DiskSage — Clean only what you trust">
+    <meta property="og:description" content="See where your storage really goes. Understand every recommendation. Clean confidently.">
+    <meta property="og:url" content="https://talaatmagdyx.github.io/DiskSage/">
+    <meta property="og:image" content="https://talaatmagdyx.github.io/DiskSage/assets/og.png">
+    <meta property="og:image:alt" content="DiskSage storage overview">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://talaatmagdyx.github.io/DiskSage/">
+    <link rel="icon" href="assets/app-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="stylesheet" href="styles.css">
+    <title>DiskSage — The intelligent disk cleaner for developers</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="site-header" data-header>
+      <div class="shell nav-wrap">
+        <a class="brand" href="#top" aria-label="DiskSage home">
+          <img src="assets/app-icon.png" alt="" width="42" height="42">
+          <span><strong>DiskSage</strong><small>Local by design</small></span>
+        </a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav" data-menu>
+          <span></span><span></span><span></span><span class="sr-only">Open navigation</span>
+        </button>
+        <nav id="site-nav" class="site-nav" aria-label="Primary navigation" data-nav>
+          <a href="#features">Features</a>
+          <a href="#safety">Safety</a>
+          <a href="#tour">Product tour</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/talaatmagdyx/DiskSage" target="_blank" rel="noreferrer">GitHub</a>
+          <a class="nav-cta" href="https://github.com/talaatmagdyx/DiskSage/releases" data-download>Get DiskSage</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero shell" id="top">
+        <div class="hero-copy reveal">
+          <div class="eyebrow"><span class="pulse"></span><span data-release-label>v0.1 release candidate</span> · macOS & Linux</div>
+          <h1>Your disk has a story.<br><span>DiskSage explains it.</span></h1>
+          <p class="hero-lead">The intelligent disk cleaner for developers and power users. See where your storage really goes, understand why cleanup is safe, and remove only what you reviewed.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/talaatmagdyx/DiskSage/releases" data-download>
+              <span>Download DiskSage</span><span aria-hidden="true">↗</span>
+            </a>
+            <a class="button button-secondary" href="https://github.com/talaatmagdyx/DiskSage" target="_blank" rel="noreferrer">
+              <span class="github-mark" aria-hidden="true">●</span> View on GitHub
+            </a>
+          </div>
+          <div class="hero-proof" aria-label="Core promises">
+            <div><strong>100%</strong><span>local analysis</span></div>
+            <div><strong>3</strong><span>safety tiers</span></div>
+            <div><strong>Trash</strong><span>before delete</span></div>
+          </div>
+        </div>
+
+        <div class="hero-visual reveal" data-delay="120">
+          <div class="product-glow" aria-hidden="true"></div>
+          <div class="app-window">
+            <div class="window-bar"><span></span><span></span><span></span><em>DiskSage</em></div>
+            <img src="assets/screenshots/overview.png" alt="DiskSage dashboard showing disk usage and targeted scans">
+          </div>
+          <div class="floating-card floating-safe"><span>✓</span><div><strong>Evidence verified</strong><small>Ready for review</small></div></div>
+          <div class="floating-card floating-local"><span>⌁</span><div><strong>Stays on device</strong><small>No cloud required</small></div></div>
+        </div>
+      </section>
+
+      <section class="tool-strip" aria-label="Developer tools DiskSage understands">
+        <div class="shell tool-row">
+          <span>npm</span><span>Cargo</span><span>Homebrew</span><span>Xcode</span><span>Docker</span><span>JetBrains</span><span>Gradle</span><span>Ollama</span><span>Playwright</span>
+        </div>
+      </section>
+
+      <section class="section shell" id="features">
+        <div class="section-heading reveal">
+          <span class="kicker">Built for real machines</span>
+          <h2>More intelligence.<br><span>Less guesswork.</span></h2>
+          <p>DiskSage understands the tools that fill developer machines—and keeps analysis separate from cleanup authorization.</p>
+        </div>
+
+        <div class="bento-grid">
+          <article class="feature-card feature-wide reveal">
+            <div class="feature-icon">⌘</div>
+            <div><span class="micro-label">Developer intelligence</span><h3>It recognizes what made the mess.</h3><p>Package managers, IDEs, build systems, browser tooling, containers, simulators, local models, and virtual disks each get purpose-built evidence and boundaries.</p></div>
+            <div class="chip-cloud" aria-label="Example supported tools"><span>pnpm</span><span>uv</span><span>SwiftPM</span><span>Cursor</span><span>Cypress</span><span>Colima</span><span>PyTorch</span><span>Android Studio</span></div>
+          </article>
+          <article class="feature-card reveal" data-delay="70">
+            <div class="feature-icon">◎</div><span class="micro-label">Storage Map</span><h3>See where space really goes.</h3><p>Compare logical and allocated size without turning every large folder into a deletion recommendation.</p>
+            <div class="mini-bars" aria-hidden="true"><i style="--w:92%"></i><i style="--w:61%"></i><i style="--w:38%"></i></div>
+          </article>
+          <article class="feature-card reveal" data-delay="120">
+            <div class="feature-icon">⧉</div><span class="micro-label">Verified duplicates</span><h3>Equality, not coincidence.</h3><p>Staged BLAKE3 hashing and optional byte comparison prove duplicates before a keep-one plan is created.</p>
+            <div class="hash-demo" aria-hidden="true"><span>01</span><b></b><span>01</span><em>match</em></div>
+          </article>
+          <article class="feature-card reveal" data-delay="70">
+            <div class="feature-icon">▣</div><span class="micro-label">Applications</span><h3>Uninstall with boundaries.</h3><p>Sort by size or last used, then choose app-only or positively attributed support data. Projects and ambiguous shared containers stay excluded.</p>
+          </article>
+          <article class="feature-card feature-accent reveal" data-delay="120">
+            <div class="feature-icon">⌂</div><span class="micro-label">Local by design</span><h3>Your disk stays your business.</h3><p>No account. No telemetry. No uploaded paths, hashes, scan results, or file contents.</p><div class="local-seal">Runs entirely<br>on your device</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section safety-section" id="safety">
+        <div class="shell">
+          <div class="section-heading centered reveal">
+            <span class="kicker">A memorable safety model</span>
+            <h2>Large is a size.<br><span>Not a verdict.</span></h2>
+            <p>Every finding declares an exact boundary and one of three behaviors. Risk—not reclaimable size—controls what DiskSage may do.</p>
+          </div>
+          <div class="tier-grid">
+            <article class="tier tier-safe reveal"><div class="tier-top"><span>01</span><b>Safe</b></div><h3>Regenerable and bounded</h3><p>Narrow caches and downloaded artifacts can enter a reviewed Trash plan, then must pass immediate revalidation.</p><ul><li>Eligible for explicit selection</li><li>Move to Trash</li><li>Fail closed on change</li></ul></article>
+            <article class="tier tier-careful reveal" data-delay="90"><div class="tier-top"><span>02</span><b>Careful</b></div><h3>Useful, but disruptive</h3><p>IDE state, app support, archives, and runtimes may require reindexing, downloads, or a reset after removal.</p><ul><li>Never automatically selected</li><li>Typed confirmation</li><li>Trash only</li></ul></article>
+            <article class="tier tier-expert reveal" data-delay="180"><div class="tier-top"><span>03</span><b>Expert</b></div><h3>Owned by another system</h3><p>Virtual disks, models, and active runtimes stay review-only or hand off to the tool that owns them.</p><ul><li>Inspection or guided action</li><li>No direct Docker.raw removal</li><li>Owner command preferred</li></ul></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell workflow-section">
+        <div class="section-heading reveal"><span class="kicker">Cleanup as a transaction</span><h2>Six deliberate steps.<br><span>Zero silent surprises.</span></h2></div>
+        <ol class="workflow reveal">
+          <li><span>01</span><strong>Scan</strong><small>Bounded traversal</small></li>
+          <li><span>02</span><strong>Explain</strong><small>Evidence and tier</small></li>
+          <li><span>03</span><strong>Review</strong><small>Exact selection</small></li>
+          <li><span>04</span><strong>Plan</strong><small>Immutable intent</small></li>
+          <li><span>05</span><strong>Revalidate</strong><small>Fail closed</small></li>
+          <li><span>06</span><strong>Trash</strong><small>Recoverable result</small></li>
+        </ol>
+        <p class="workflow-note reveal">The Rust backend checks the rule, approved root, canonical path, type, size, modification time, symlink state, and protected-path policy immediately before anything moves.</p>
+      </section>
+
+      <section class="section tour-section" id="tour">
+        <div class="shell">
+          <div class="section-heading centered reveal"><span class="kicker">Product tour</span><h2>Clarity at every decision.</h2><p>Real interface captures use deterministic, path-free fixtures. No contributor's disk paths are shown.</p></div>
+          <div class="tour-tabs reveal" role="tablist" aria-label="DiskSage screenshots">
+            <button role="tab" aria-selected="true" data-shot="findings" data-title="Findings that explain themselves" data-copy="Evidence, safety tier, size accuracy, and the next appropriate action—together.">Findings</button>
+            <button role="tab" aria-selected="false" data-shot="applications" data-title="Application intelligence with permission context" data-copy="Last-used inventory, uninstall boundaries, system-app exclusion, and clear access guidance.">Applications</button>
+            <button role="tab" aria-selected="false" data-shot="storage-map" data-title="Read-only storage explanation" data-copy="Logical and allocated sizes stay distinct, especially for sparse files and virtual disks.">Storage Map</button>
+            <button role="tab" aria-selected="false" data-shot="onboarding" data-title="Privacy from first launch" data-copy="DiskSage states its local-data contract before the first scan begins.">Privacy</button>
+          </div>
+          <div class="tour-stage reveal">
+            <div class="tour-window"><div class="window-bar"><span></span><span></span><span></span><em>DiskSage</em></div><img data-tour-image src="assets/screenshots/findings.png" alt="DiskSage Findings screen"></div>
+            <div class="tour-caption"><span class="micro-label">Inside DiskSage</span><h3 data-tour-title>Findings that explain themselves</h3><p data-tour-copy>Evidence, safety tier, size accuracy, and the next appropriate action—together.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell compare-section">
+        <div class="section-heading reveal"><span class="kicker">Why DiskSage</span><h2>Visibility is useful.<br><span>Understanding is better.</span></h2></div>
+        <div class="compare-table reveal" role="table" aria-label="DiskSage comparison">
+          <div class="compare-row compare-head" role="row"><span role="columnheader">Approach</span><span role="columnheader">What it answers</span><span role="columnheader">What DiskSage adds</span></div>
+          <div class="compare-row" role="row"><strong role="cell">Finder / system storage</strong><span role="cell">Where are my large files?</span><span role="cell">Developer-aware meaning, evidence, and safety tiers.</span></div>
+          <div class="compare-row" role="row"><strong role="cell">du / ncdu</strong><span role="cell">Which paths use space?</span><span role="cell">Verified findings, cleanup plans, cancellation, and history.</span></div>
+          <div class="compare-row" role="row"><strong role="cell">One-click cleaners</strong><span role="cell">How much can I remove?</span><span role="cell">Why it exists, what removal changes, and when not to act.</span></div>
+          <div class="compare-row" role="row"><strong role="cell">Shell scripts</strong><span role="cell">How can I automate removal?</span><span role="cell">Protected boundaries, revalidation, partial failures, and auditability.</span></div>
+        </div>
+      </section>
+
+      <section class="section shell principles-section">
+        <div class="principles-card reveal">
+          <div><span class="kicker">The DiskSage promise</span><h2>Trust is a feature.</h2><p>DiskSage is intentionally conservative. Ambiguity increases risk; it never increases cleanup authority.</p></div>
+          <ul><li><span>✓</span>Never delete silently</li><li><span>✓</span>Explain every recommendation</li><li><span>✓</span>Fail closed when state changes</li><li><span>✓</span>Keep filesystem authority in Rust</li><li><span>✓</span>Use owner tools for owner-managed state</li><li><span>✓</span>Record outcomes locally</li></ul>
+        </div>
+      </section>
+
+      <section class="section download-section" id="download">
+        <div class="shell download-card reveal">
+          <div class="download-copy"><span class="kicker">Start with confidence</span><h2>Meet your disk<br>before cleaning it.</h2><p>DiskSage is an open-source release candidate for macOS and Linux. Review the release notes and platform instructions before installing.</p><div class="hero-actions"><a class="button button-light" href="https://github.com/talaatmagdyx/DiskSage/releases" data-download>View downloads <span aria-hidden="true">↗</span></a><a class="button button-outline-dark" href="https://github.com/talaatmagdyx/DiskSage/blob/main/INSTALL.md">Installation guide</a></div></div>
+          <div class="platform-cards">
+            <div><span aria-hidden="true">⌘</span><strong>macOS</strong><small>Apple silicon & Intel</small><em>Signed DMG required</em></div>
+            <div><span aria-hidden="true">◇</span><strong>Linux</strong><small>Ubuntu 22.04+</small><em>AppImage & Debian</em></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell faq-section" id="faq">
+        <div class="section-heading centered reveal"><span class="kicker">Questions, answered</span><h2>Know before you clean.</h2></div>
+        <div class="faq-list reveal">
+          <details><summary>Does DiskSage upload my files or scan results?<span>+</span></summary><p>No. Scanning, rule evaluation, duplicate hashing, and cleanup happen locally. Diagnostic exports contain aggregate counts and redacted configuration.</p></details>
+          <details><summary>Does it delete anything automatically?<span>+</span></summary><p>No. Safe findings still require review. Careful findings require explicit confirmation. Expert findings are inspection-only or guided actions.</p></details>
+          <details><summary>Can I restore cleaned items?<span>+</span></summary><p>Eligible cleanup moves items to the operating-system Trash by default. Restore them with Finder or your desktop environment's Trash interface.</p></details>
+          <details><summary>Why can reclaimed space differ from the selected size?<span>+</span></summary><p>Trash retention, sparse allocation, compression, copy-on-write clones, APFS snapshots, and filesystem accounting can delay or change reclaimed space.</p></details>
+          <details><summary>Can DiskSage completely uninstall an app?<span>+</span></summary><p>On macOS, it can add positively attributed containers, preferences, caches, saved state, and logs. Documents, projects, and ambiguous shared containers remain excluded by default.</p></details>
+          <details><summary>Can I audit the cleanup rules?<span>+</span></summary><p>Yes. DiskSage is MIT licensed. Its versioned rule catalogs, protected-path policy, IPC contracts, tests, and safety documentation are all in the public repository.</p></details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div><a class="brand" href="#top"><img src="assets/app-icon.png" alt="" width="42" height="42"><span><strong>DiskSage</strong><small>Clean only what you trust.</small></span></a><p>Open-source disk intelligence for macOS and Linux.</p></div>
+        <div><strong>Product</strong><a href="#features">Features</a><a href="#safety">Safety model</a><a href="#tour">Product tour</a><a href="https://github.com/talaatmagdyx/DiskSage/releases">Releases</a></div>
+        <div><strong>Project</strong><a href="https://github.com/talaatmagdyx/DiskSage">GitHub</a><a href="https://github.com/talaatmagdyx/DiskSage/blob/main/README.md">Documentation</a><a href="https://github.com/talaatmagdyx/DiskSage/blob/main/SECURITY.md">Security</a><a href="https://github.com/talaatmagdyx/DiskSage/blob/main/PRIVACY.md">Privacy</a></div>
+      </div>
+      <div class="shell footer-bottom"><span>© <span data-year></span> DiskSage contributors</span><span>MIT licensed · Built with Rust, Tauri, React, and care.</span></div>
+    </footer>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
