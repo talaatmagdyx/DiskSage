@@ -191,6 +191,7 @@ fn normalize_lexically(path: &Path) -> Option<PathBuf> {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn blocks_root_home_and_sensitive_descendants() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/Users/alex"), "macos");
@@ -202,18 +203,21 @@ mod tests {
         assert!(policy.check(Path::new("/System/Library")).is_some());
     }
 
+    #[cfg(unix)]
     #[test]
     fn blocks_lexical_traversal_into_protected_path() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
         assert!(policy.check(Path::new("/tmp/../etc/passwd")).is_some());
     }
 
+    #[cfg(unix)]
     #[test]
     fn allows_unprotected_cache_candidate_for_later_rule_validation() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
         assert!(policy.check(Path::new("/opt/cache/npm")).is_none());
     }
 
+    #[cfg(unix)]
     #[test]
     fn allows_only_exact_known_children_inside_home() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
