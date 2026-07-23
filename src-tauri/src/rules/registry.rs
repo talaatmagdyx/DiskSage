@@ -4,7 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::domain::{rule::RuleDefinition, scan::ScanProfileId};
+use crate::domain::{
+    rule::{Platform, RuleDefinition, RuleTarget},
+    scan::ScanProfileId,
+};
 
 use super::{
     catalogs::{developer_tools, project_artifacts, safe_caches},
@@ -28,6 +31,9 @@ impl RulesRegistry {
         home: &Path,
         platform: &str,
     ) -> Vec<ResolvedRule> {
+        if !matches!(platform, "macos" | "linux" | "windows") {
+            return Vec::new();
+        }
         let mut rules: Vec<_> = safe_caches::catalog()
             .into_iter()
             .filter(|rule| match profile {
@@ -37,25 +43,23 @@ impl RulesRegistry {
                         | "cache.yarn.downloads-v1"
                         | "cache.pip.downloads-v1"
                         | "cache.browser.chrome-v1"
+                        | "cache.browser.edge-v1"
                         | "cache.browser.firefox-v1"
                 ),
                 ScanProfileId::Developer | ScanProfileId::FullAnalysis => true,
                 ScanProfileId::Custom => false,
             })
-            .map(|rule| {
-                let relative = if platform == "macos" {
-                    rule.macos_path
-                } else {
-                    rule.linux_path
-                };
-                ResolvedRule {
-                    definition: rule.definition,
+            .filter_map(|rule| {
+                let relative = safe_cache_path(&rule, platform)?;
+                Some(ResolvedRule {
+                    definition: definition_for_platform(rule.definition, platform, relative),
                     target: home.join(relative),
                     excluded_targets: Vec::new(),
-                }
+                })
             })
             .collect();
-        expand_chrome_profile_caches(&mut rules, home, platform);
+        expand_browser_profile_caches(&mut rules, home, platform, "cache.browser.chrome-v1");
+        expand_browser_profile_caches(&mut rules, home, platform, "cache.browser.edge-v1");
         rules
     }
 
@@ -82,14 +86,10 @@ impl RulesRegistry {
             if spec.definition.id != rule_id || spec.definition.version != rule_version {
                 return None;
             }
-            let relative = if platform == "macos" {
-                spec.macos_path
-            } else {
-                spec.linux_path
-            }?;
+            let relative = developer_tool_path(&spec, platform)?;
             let target = home.join(relative);
             (target == expected_target).then_some(ResolvedRule {
-                definition: spec.definition,
+                definition: definition_for_platform(spec.definition, platform, relative),
                 target,
                 excluded_targets: Vec::new(),
             })
@@ -127,6 +127,9 @@ impl RulesRegistry {
         platform: &str,
         configured_project_roots: &[PathBuf],
     ) -> Vec<ResolvedRule> {
+        if !matches!(platform, "macos" | "linux" | "windows") {
+            return Vec::new();
+        }
         let mut rules = self.rules_for(profile, home, platform);
         if !matches!(
             profile,
@@ -135,13 +138,9 @@ impl RulesRegistry {
             return rules;
         }
         rules.extend(developer_tools::catalog().into_iter().filter_map(|spec| {
-            let relative = if platform == "macos" {
-                spec.macos_path
-            } else {
-                spec.linux_path
-            }?;
+            let relative = developer_tool_path(&spec, platform)?;
             Some(ResolvedRule {
-                definition: spec.definition,
+                definition: definition_for_platform(spec.definition, platform, relative),
                 target: home.join(relative),
                 excluded_targets: Vec::new(),
             })
@@ -169,15 +168,17 @@ impl RulesRegistry {
     }
 }
 
-fn expand_chrome_profile_caches(rules: &mut Vec<ResolvedRule>, home: &Path, platform: &str) {
-    let Some(template_index) = rules
-        .iter()
-        .position(|rule| rule.definition.id == "cache.browser.chrome-v1")
-    else {
+fn expand_browser_profile_caches(
+    rules: &mut Vec<ResolvedRule>,
+    home: &Path,
+    platform: &str,
+    rule_id: &str,
+) {
+    let Some(template_index) = rules.iter().position(|rule| rule.definition.id == rule_id) else {
         return;
     };
     let template = rules.remove(template_index);
-    let targets = chrome_profile_cache_targets(home, platform);
+    let targets = browser_profile_cache_targets(home, platform, rule_id);
     if targets.is_empty() {
         rules.push(template);
         return;
@@ -214,21 +215,37 @@ fn assign_unclassified_cache_exclusions(rules: &mut [ResolvedRule]) {
     }
 }
 
-fn chrome_profile_cache_targets(home: &Path, platform: &str) -> Vec<(PathBuf, String)> {
-    let roots: &[(&str, &str)] = if platform == "macos" {
-        &[
+fn browser_profile_cache_targets(
+    home: &Path,
+    platform: &str,
+    rule_id: &str,
+) -> Vec<(PathBuf, String)> {
+    let roots: &[(&str, &str)] = match (rule_id, platform) {
+        ("cache.browser.chrome-v1", "macos") => &[
             ("Library/Caches/Google/Chrome", "Chrome"),
             ("Library/Caches/Google/Chrome Beta", "Chrome Beta"),
             ("Library/Caches/Google/Chrome Canary", "Chrome Canary"),
             ("Library/Caches/Google/Chrome Dev", "Chrome Dev"),
-        ]
-    } else {
-        &[
+        ],
+        ("cache.browser.chrome-v1", "linux") => &[
             (".cache/google-chrome", "Chrome"),
             (".cache/google-chrome-beta", "Chrome Beta"),
             (".cache/google-chrome-unstable", "Chrome Dev"),
             (".cache/chromium", "Chromium"),
-        ]
+        ],
+        ("cache.browser.chrome-v1", "windows") => &[
+            ("AppData/Local/Google/Chrome/User Data", "Chrome"),
+            ("AppData/Local/Google/Chrome Beta/User Data", "Chrome Beta"),
+            ("AppData/Local/Google/Chrome SxS/User Data", "Chrome Canary"),
+        ],
+        ("cache.browser.edge-v1", "macos") => {
+            &[("Library/Caches/Microsoft Edge", "Microsoft Edge")]
+        }
+        ("cache.browser.edge-v1", "linux") => &[(".cache/microsoft-edge", "Microsoft Edge")],
+        ("cache.browser.edge-v1", "windows") => {
+            &[("AppData/Local/Microsoft/Edge/User Data", "Microsoft Edge")]
+        }
+        _ => &[],
     };
     let mut targets = Vec::new();
     for (relative_root, channel) in roots {
@@ -260,6 +277,107 @@ fn chrome_profile_cache_targets(home: &Path, platform: &str) -> Vec<(PathBuf, St
     targets.sort_by(|left, right| left.0.cmp(&right.0));
     targets.dedup_by(|left, right| left.0 == right.0);
     targets
+}
+
+fn safe_cache_path(rule: &safe_caches::CacheRuleSpec, platform: &str) -> Option<&'static str> {
+    match platform {
+        "macos" => Some(rule.macos_path),
+        "linux" => Some(rule.linux_path),
+        "windows" => windows_safe_cache_path(&rule.definition.id),
+        _ => None,
+    }
+}
+
+fn developer_tool_path(
+    spec: &developer_tools::DeveloperToolSpec,
+    platform: &str,
+) -> Option<&'static str> {
+    match platform {
+        "macos" => spec.macos_path,
+        "linux" => spec.linux_path,
+        "windows" => windows_developer_tool_path(&spec.definition.id),
+        _ => None,
+    }
+}
+
+fn definition_for_platform(
+    mut definition: RuleDefinition,
+    platform: &str,
+    relative: &'static str,
+) -> RuleDefinition {
+    if platform == "windows" {
+        if !definition.platforms.contains(&Platform::Windows) {
+            definition.platforms.push(Platform::Windows);
+        }
+        let target = RuleTarget::HomeRelative {
+            path: relative.to_owned(),
+        };
+        if !definition.targets.contains(&target) {
+            definition.targets.push(target);
+        }
+    }
+    definition
+}
+
+fn windows_safe_cache_path(rule_id: &str) -> Option<&'static str> {
+    match rule_id {
+        "cache.npm.content-v1" => Some("AppData/Local/npm-cache/_cacache"),
+        "cache.pnpm.store-v1" => Some("AppData/Local/pnpm/store"),
+        "cache.yarn.downloads-v1" => Some("AppData/Local/Yarn/Cache"),
+        "cache.pip.downloads-v1" => Some("AppData/Local/pip/Cache"),
+        "cache.cargo.registry-v1" => Some(".cargo/registry/cache"),
+        "cache.gradle.modules-v1" => Some(".gradle/caches/modules-2/files-2.1"),
+        "cache.gradle.wrapper-v1" => Some(".gradle/wrapper/dists"),
+        "cache.maven.wrapper-v1" => Some(".m2/wrapper/dists"),
+        "cache.maven.repository-v1" => Some(".m2/repository"),
+        "cache.nuget.packages-v1" => Some(".nuget/packages"),
+        "cache.go.modules-v1" => Some("go/pkg/mod/cache"),
+        "cache.browser.chrome-v1" => {
+            Some("AppData/Local/Google/Chrome/User Data/Default/Cache/Cache_Data")
+        }
+        "cache.browser.edge-v1" => {
+            Some("AppData/Local/Microsoft/Edge/User Data/Default/Cache/Cache_Data")
+        }
+        "cache.browser.firefox-v1" => Some("AppData/Local/Mozilla/Firefox/Profiles"),
+        "cache.node-gyp.downloads-v1" => Some("AppData/Local/node-gyp/Cache"),
+        "cache.pip-tools.downloads-v1" => Some("AppData/Local/pip-tools/Cache"),
+        "cache.aws-cli-v1" => Some(".aws/cli/cache"),
+        "cache.uv-v1" => Some("AppData/Local/uv/cache"),
+        "cache.pre-commit-v1" => Some("AppData/Local/pre-commit"),
+        "cache.cypress-v1" => Some("AppData/Local/Cypress/Cache"),
+        "cache.cursor.logs-v1" => Some("AppData/Roaming/Cursor/logs"),
+        "cache.cursor.cached-data-v1" => Some("AppData/Roaming/Cursor/CachedData"),
+        "cache.vscode.extension-vsix-v1" => Some("AppData/Roaming/Code/CachedExtensionVSIXs"),
+        "cache.cursor.extension-vsix-v1" => Some("AppData/Roaming/Cursor/CachedExtensionVSIXs"),
+        _ => None,
+    }
+}
+
+fn windows_developer_tool_path(rule_id: &str) -> Option<&'static str> {
+    match rule_id {
+        "inspection.ide.jetbrains-cache-v1" => Some("AppData/Local/JetBrains"),
+        "inspection.ide.vscode-cache-v1" => Some("AppData/Roaming/Code/Cache"),
+        "inspection.android.sdk-temp-v1" => Some("AppData/Local/Android/Sdk/.temp"),
+        "inspection.android.avd-v1" => Some(".android/avd"),
+        "inspection.docker.raw-v1" => Some("AppData/Local/Docker/wsl/data/docker_data.vhdx"),
+        "inspection.cursor.state-db-v1" => {
+            Some("AppData/Roaming/Cursor/User/globalStorage/state.vscdb")
+        }
+        "inspection.codex.runtimes-v1" => Some(".cache/codex-runtimes"),
+        "inspection.playwright.browsers-v1" => Some("AppData/Local/ms-playwright"),
+        "inspection.jetbrains.versioned-data-v1" => Some("AppData/Roaming/JetBrains"),
+        "inspection.notion.partitions-v1" => Some("AppData/Roaming/Notion/Partitions"),
+        "inspection.claude.sessions-v1" => Some("AppData/Roaming/Claude/local-agent-mode-sessions"),
+        "inspection.claude.vm-bundles-v1" => Some("AppData/Roaming/Claude/vm_bundles"),
+        "inspection.runtime.asdf-v1" => Some(".asdf"),
+        "inspection.runtime.mise-v1" => Some(".local/share/mise/installs"),
+        "inspection.kubernetes.minikube-v1" => Some(".minikube"),
+        "inspection.ml.unsloth-v1" => Some(".unsloth"),
+        "inspection.ml.huggingface-v1" => Some(".cache/huggingface"),
+        "inspection.ml.pytorch-v1" => Some(".cache/torch"),
+        "inspection.ml.ollama-v1" => Some(".ollama/models"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -457,6 +575,46 @@ mod tests {
         assert_eq!(
             remainder_measurement.logical_size + uv_measurement.logical_size,
             full_measurement.logical_size
+        );
+    }
+
+    #[test]
+    fn windows_rules_use_windows_paths_without_linux_fallbacks() {
+        let home = tempfile::tempdir().unwrap();
+        let registry = RulesRegistry;
+        let rules = registry.rules_for(ScanProfileId::Developer, home.path(), "windows");
+        let npm = rules
+            .iter()
+            .find(|rule| rule.definition.id == "cache.npm.content-v1")
+            .unwrap();
+        assert_eq!(
+            npm.target,
+            home.path().join("AppData/Local/npm-cache/_cacache")
+        );
+        assert!(npm.definition.platforms.contains(&Platform::Windows));
+        assert!(!rules
+            .iter()
+            .any(|rule| rule.definition.id == "cache.homebrew.downloads-v1"));
+        assert!(registry
+            .rules_for(ScanProfileId::Developer, home.path(), "unsupported")
+            .is_empty());
+    }
+
+    #[test]
+    fn windows_developer_rules_keep_virtual_disks_review_only() {
+        let home = tempfile::tempdir().unwrap();
+        let rules =
+            RulesRegistry.rules_for_scan(ScanProfileId::Developer, home.path(), "windows", &[]);
+        let docker = rules
+            .iter()
+            .find(|rule| rule.definition.id == "inspection.docker.raw-v1")
+            .unwrap();
+        assert!(docker
+            .target
+            .ends_with("AppData/Local/Docker/wsl/data/docker_data.vhdx"));
+        assert_eq!(
+            docker.definition.recommended_action,
+            crate::domain::rule::RecommendedAction::GuidedCommand
         );
     }
 }

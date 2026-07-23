@@ -14,6 +14,7 @@
   <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-3abb8b">
   <img alt="macOS 10.15+" src="https://img.shields.io/badge/macOS-10.15%2B-111827?logo=apple&logoColor=white">
   <img alt="Linux" src="https://img.shields.io/badge/Linux-Ubuntu%2022.04%2B-111827?logo=linux&logoColor=white">
+  <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-111827?logo=windows&logoColor=white">
   <img alt="Local first" src="https://img.shields.io/badge/privacy-local--first-166534">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2EA44F"></a>
 </p>
@@ -118,8 +119,9 @@ DiskSage is currently a **pre-release project**. Release workflows target:
 
 - macOS 10.15 or later: Apple silicon and Intel DMGs
 - Linux x86_64 and ARM64: AppImage, Debian, and RPM packages
+- Windows 10 and 11 x86_64: NSIS setup executable and MSI installer
 
-Public macOS artifacts are expected to be Developer ID signed, notarized, and stapled. Development builds are unsigned. See [INSTALL.md](INSTALL.md) for install, upgrade, uninstall, and source-build details.
+Public macOS artifacts are expected to be Developer ID signed, notarized, and stapled. Public Windows installers are expected to be Authenticode signed. Development and preview builds may be unsigned. See [INSTALL.md](INSTALL.md) for install, upgrade, uninstall, and source-build details.
 
 ### Run from source
 
@@ -153,7 +155,7 @@ Repeatable multi-machine timing, peak-memory, hashing, startup, and package-size
 
 <details><summary><strong>Why did free space increase by less than the selected size?</strong></summary><br>Trash retention, sparse allocation, compression, copy-on-write clones, APFS snapshots, and filesystem accounting can delay or change reclaimed space.</details>
 
-<details><summary><strong>Can it completely uninstall an application?</strong></summary><br>On macOS, DiskSage can add positively attributed containers, preferences, caches, saved state, and logs to a reviewed plan. Documents, projects, and ambiguous shared containers remain excluded by default.</details>
+<details><summary><strong>Can it completely uninstall an application?</strong></summary><br>On macOS, DiskSage can add positively attributed containers, preferences, caches, saved state, and logs to a reviewed plan. Documents, projects, and ambiguous shared containers remain excluded by default. Windows application inventory is read-only and opens Windows Installed Apps so the publisher-registered uninstaller retains ownership.</details>
 
 <details><summary><strong>Can I inspect the cleanup rules?</strong></summary><br>Yes. The versioned catalogs live in <a href="src-tauri/src/rules/catalogs">src-tauri/src/rules/catalogs</a>, and the governing guarantees are documented in the <a href="docs/safety-policy.md">safety policy</a>.</details>
 
@@ -162,7 +164,7 @@ Repeatable multi-machine timing, peak-memory, hashing, startup, and package-size
 DiskSage keeps its roadmap conservative until safety behavior is validated on diverse real machines.
 
 - **v0.1 release candidate — implemented:** targeted scans, safety-ranked findings, Trash plans, duplicates, application intelligence, Storage Map, permission guidance, local history, and redacted diagnostics.
-- **Release readiness — next:** multi-Mac/Linux testing, signed and notarized artifacts, reproducible performance baselines, sparse-file validation, and UX refinement from real-world failures.
+- **Release readiness — next:** multi-Mac/Linux/Windows testing, signed platform artifacts, reproducible performance baselines, sparse-file validation, and UX refinement from real-world failures.
 - **Future research — not committed:** community-authored rule packs, read-only CLI reporting, and a stable extension boundary that cannot bypass cleanup authorization.
 
 See the [release checklist](docs/release-checklist.md), [known limitations](docs/limitations.md), and [changelog](CHANGELOG.md) for current status.

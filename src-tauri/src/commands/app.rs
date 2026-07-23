@@ -71,14 +71,19 @@ pub fn open_app_link(request: OpenAppLinkRequest) -> Result<(), CommandError> {
     #[cfg(target_os = "linux")]
     let result = Command::new("xdg-open").arg(url).spawn();
 
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(target_os = "windows")]
+    let result = Command::new("rundll32.exe")
+        .args(["url.dll,FileProtocolHandler", url])
+        .spawn();
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     return Err(CommandError::new(
         ErrorCode::CommandUnavailable,
         "Opening product links is not supported on this platform.",
         false,
     ));
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     result.map(|_| ()).map_err(|error| {
         CommandError::new(
             ErrorCode::CommandUnavailable,

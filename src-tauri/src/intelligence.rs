@@ -8,12 +8,15 @@ use std::{
 
 use chrono::Utc;
 
-use crate::domain::{
-    error::{CommandError, ErrorCode},
-    intelligence::{
-        OrphanedApplicationData, PermissionAccess, PermissionLocation, PermissionReport,
-        StorageMapEntry, StorageMapReport, StorageMapRequest,
+use crate::{
+    domain::{
+        error::{CommandError, ErrorCode},
+        intelligence::{
+            OrphanedApplicationData, PermissionAccess, PermissionLocation, PermissionReport,
+            StorageMapEntry, StorageMapReport, StorageMapRequest,
+        },
     },
+    platform::filesystem::{allocated_size, is_link_or_reparse_point},
 };
 
 const MAP_MAX_ENTRIES: u64 = 150_000;
@@ -39,53 +42,99 @@ struct Budget {
 }
 
 pub fn permission_report(home: &Path, platform: &str) -> Result<PermissionReport, CommandError> {
-    if platform != "macos" {
-        return Err(CommandError::new(
-            ErrorCode::CommandUnavailable,
-            "Permission Center is currently available on macOS.",
-            true,
-        ));
-    }
-    let checks = [
-        ("Home folder", home.to_path_buf(), false),
-        (
-            "Application Support",
-            home.join("Library/Application Support"),
-            false,
+    let (checks, note): (Vec<(&str, PathBuf, bool)>, &str) = match platform {
+        "macos" => (
+            vec![
+                ("Home folder", home.to_path_buf(), false),
+                (
+                    "Application Support",
+                    home.join("Library/Application Support"),
+                    false,
+                ),
+                ("App Containers", home.join("Library/Containers"), true),
+                (
+                    "Shared Group Containers",
+                    home.join("Library/Group Containers"),
+                    true,
+                ),
+            ],
+            "This is a read-only access check, not a macOS authorization guarantee. DiskSage never changes privacy settings automatically.",
         ),
-        ("App Containers", home.join("Library/Containers"), true),
-        (
-            "Shared Group Containers",
-            home.join("Library/Group Containers"),
-            true,
+        "windows" => (
+            vec![
+                ("User profile", home.to_path_buf(), false),
+                ("Local application data", home.join("AppData/Local"), false),
+                (
+                    "Roaming application data",
+                    home.join("AppData/Roaming"),
+                    false,
+                ),
+                (
+                    "Shared application data",
+                    home.ancestors()
+                        .last()
+                        .unwrap_or(home)
+                        .join("ProgramData"),
+                    true,
+                ),
+            ],
+            "This is a read-only access check, not a Windows authorization guarantee. DiskSage never changes security or privacy settings automatically.",
         ),
-    ];
+        "linux" => (
+            vec![
+                ("Home folder", home.to_path_buf(), false),
+                ("User cache", home.join(".cache"), false),
+                ("User configuration", home.join(".config"), false),
+                ("User application data", home.join(".local/share"), false),
+            ],
+            "This is a read-only access check. DiskSage never changes filesystem permissions automatically.",
+        ),
+        _ => {
+            return Err(CommandError::new(
+                ErrorCode::CommandUnavailable,
+                "Permission Center is not available on this platform.",
+                true,
+            ))
+        }
+    };
     let locations: Vec<_> = checks
         .into_iter()
-        .map(|(label, path, restricted)| permission_location(label, &path, home, restricted))
+        .map(|(label, path, restricted)| {
+            permission_location(label, &path, home, restricted, platform)
+        })
         .collect();
     let full_disk_access_likely = locations
         .iter()
-        .filter(|location| location.label.contains("Container"))
         .all(|location| location.access != PermissionAccess::Limited);
     Ok(PermissionReport {
         checked_at: Utc::now(),
         full_disk_access_likely,
         locations,
-        note: "This is a read-only access check, not a macOS authorization guarantee. DiskSage never changes privacy settings automatically.".to_owned(),
+        note: note.to_owned(),
     })
 }
 
 pub fn open_full_disk_access_settings(platform: &str) -> Result<(), CommandError> {
-    if platform != "macos" {
-        return Err(CommandError::new(
-            ErrorCode::CommandUnavailable,
-            "Full Disk Access settings are available only on macOS.",
-            false,
-        ));
-    }
-    let status = Command::new("open")
-        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+    let mut command = match platform {
+        "macos" => {
+            let mut command = Command::new("open");
+            command.arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles");
+            command
+        }
+        "windows" => {
+            let mut command = Command::new("explorer.exe");
+            command.arg("ms-settings:privacy-broadfilesystemaccess");
+            command
+        }
+        _ => {
+            return Err(CommandError::new(
+                ErrorCode::CommandUnavailable,
+                "Platform privacy settings are not available from DiskSage on this system.",
+                false,
+            ))
+        }
+    };
+    let status = command
         .status()
         .map_err(|error| CommandError::internal(error.to_string()))?;
     if status.success() {
@@ -93,7 +142,7 @@ pub fn open_full_disk_access_settings(platform: &str) -> Result<(), CommandError
     } else {
         Err(CommandError::new(
             ErrorCode::CommandUnavailable,
-            "System Settings could not be opened. Open Privacy & Security > Full Disk Access manually.",
+            "The operating-system privacy settings could not be opened. Review filesystem access for DiskSage manually.",
             true,
         ))
     }
@@ -102,7 +151,15 @@ pub fn open_full_disk_access_settings(platform: &str) -> Result<(), CommandError
 pub fn scan_orphaned_application_data(
     home: &Path,
     installed_bundle_ids: &HashSet<String>,
+    platform: &str,
 ) -> Result<Vec<OrphanedApplicationData>, CommandError> {
+    if platform != "macos" {
+        return Err(CommandError::new(
+            ErrorCode::CommandUnavailable,
+            "Application-leftover inspection is currently available only for macOS bundle identifiers.",
+            true,
+        ));
+    }
     let roots = [
         (home.join("Library/Caches"), "Cache", "directory name"),
         (
@@ -143,7 +200,7 @@ pub fn scan_orphaned_application_data(
             let Ok(metadata) = fs::symlink_metadata(&path) else {
                 continue;
             };
-            if metadata.file_type().is_symlink() {
+            if is_link_or_reparse_point(&metadata) {
                 continue;
             }
             let Some(identifier) = application_identifier(&path, category) else {
@@ -235,7 +292,7 @@ pub fn storage_map(
         let Ok(metadata) = fs::symlink_metadata(&path) else {
             continue;
         };
-        if metadata.file_type().is_symlink() || device_id(&metadata) != root_device {
+        if is_link_or_reparse_point(&metadata) || device_id(&metadata) != root_device {
             continue;
         }
         let measurement = measure_bounded(&path, root_device, &mut budget);
@@ -288,27 +345,36 @@ fn permission_location(
     path: &Path,
     home: &Path,
     restricted: bool,
+    platform: &str,
 ) -> PermissionLocation {
     let (access, guidance) = match fs::read_dir(path) {
         Ok(_) => (
             PermissionAccess::Available,
             if restricted {
-                "Readable now. macOS can still require approval for individual protected items."
+                if platform == "macos" {
+                    "Readable now. macOS can still require approval for individual protected items."
+                } else {
+                    "Readable now. Individual protected items can still require additional approval."
+                }
             } else {
                 "Readable now."
             },
         ),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => (
             PermissionAccess::NotPresent,
-            "This location is not present on this Mac."
+            "This location is not present on this system.",
         ),
         Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => (
             PermissionAccess::Limited,
-            "Access is limited. Grant DiskSage Full Disk Access in System Settings > Privacy & Security, then check again."
+            if platform == "macos" {
+                "Access is limited. Grant DiskSage Full Disk Access in System Settings > Privacy & Security, then check again."
+            } else {
+                "Access is limited. Review Windows filesystem and privacy permissions, then check again."
+            },
         ),
         Err(_) => (
             PermissionAccess::Limited,
-            "This location could not be read. Check macOS privacy permissions and try again."
+            "This location could not be read. Check operating-system permissions and try again.",
         ),
     };
     PermissionLocation {
@@ -373,7 +439,7 @@ fn measure_bounded(path: &Path, root_device: u64, budget: &mut Budget) -> Measur
             measurement.logical_size = measurement.logical_size.saturating_add(metadata.len());
             measurement.allocated_size = measurement
                 .allocated_size
-                .saturating_add(allocated_size(&metadata));
+                .saturating_add(allocated_size(&current, &metadata));
         } else if metadata.is_dir() {
             measurement.directories_scanned += 1;
             if depth >= 32 {
@@ -438,17 +504,6 @@ fn device_id(_metadata: &fs::Metadata) -> u64 {
     0
 }
 
-#[cfg(unix)]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt;
-    metadata.blocks().saturating_mul(512)
-}
-
-#[cfg(not(unix))]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    metadata.len()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -500,7 +555,7 @@ mod tests {
         fs::write(installed.join("cache.bin"), vec![1_u8; 1024]).unwrap();
         let installed_ids = HashSet::from(["com.example.current".to_owned()]);
 
-        let results = scan_orphaned_application_data(home.path(), &installed_ids).unwrap();
+        let results = scan_orphaned_application_data(home.path(), &installed_ids, "macos").unwrap();
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].identifier, "com.example.retired");

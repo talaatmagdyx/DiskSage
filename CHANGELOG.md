@@ -2,6 +2,15 @@
 
 All notable changes to DiskSage are documented here.
 
+## Unreleased
+
+### Added
+
+- Explicit Windows 10/11 platform support with protected system roots, case-insensitive path enforcement, NTFS reparse-point refusal, and allocated-size measurement.
+- Windows cache and developer-tool intelligence for major package managers, browsers, editors, Android tooling, Docker Desktop/WSL, and local AI model stores.
+- Read-only Windows application inventory backed by standard uninstall registry entries, with handoff to Windows Installed Apps for publisher-owned removal.
+- Windows Explorer reveal, privacy settings guidance, Recycle Bin errors, native x86_64 CI, and NSIS/MSI preview packaging.
+
 ## [0.1.0] - 2026-07-14
 
 Initial Version 1 release candidate.

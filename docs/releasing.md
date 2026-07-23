@@ -1,6 +1,6 @@
 # Release workflow
 
-DiskSage releases are created only from version tags such as `v0.1.0`. The release workflow validates version consistency, builds two macOS architectures and Linux x86_64 packages, and uploads them to a draft GitHub release.
+DiskSage production releases are created only from version tags such as `v0.1.0`. The release workflow validates version consistency and uploads platform packages to a draft GitHub release. Preview workflows build Linux x86_64/ARM64 and Windows x86_64 packages against an existing prerelease tag.
 
 ## Required repository secrets
 
@@ -12,6 +12,8 @@ macOS signing and notarization require:
 - `APPLE_ID`: Apple developer account email;
 - `APPLE_PASSWORD`: app-specific password;
 - `APPLE_TEAM_ID`: Apple developer team identifier.
+
+Windows production installers require an Authenticode certificate or a managed signing service such as Azure Trusted Signing. Configure the provider credentials as encrypted repository secrets and make the signing command fail closed when credentials or timestamping are unavailable.
 
 The GitHub token is supplied by Actions. Grant the workflow `contents: write`; never add signing files or secret values to the repository.
 
@@ -26,4 +28,4 @@ The GitHub token is supplied by Actions. Grant the workflow `contents: write`; n
 7. Inspect the draft artifacts, verify signatures/notarization, and perform clean-machine, upgrade, and uninstall tests.
 8. Publish the draft only after every blocking checklist item passes.
 
-An unsigned local build is a development artifact, not a public macOS release.
+Unsigned macOS and Windows builds are preview/development artifacts, not production releases.

@@ -42,6 +42,14 @@
     ],
     "macOS": {
       "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   }
 }

@@ -29,6 +29,7 @@ pub enum RuleCategory {
 pub enum Platform {
     Macos,
     Linux,
+    Windows,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

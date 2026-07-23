@@ -5,8 +5,9 @@ describe("About information", () => {
   it("uses friendly platform and architecture labels", () => {
     expect(formatPlatform("macos")).toBe("macOS");
     expect(formatPlatform("linux")).toBe("Linux");
-    expect(formatArchitecture("aarch64")).toBe("Apple silicon / ARM64");
-    expect(formatArchitecture("x86_64")).toBe("Intel / x86_64");
+    expect(formatPlatform("windows")).toBe("Windows");
+    expect(formatArchitecture("aarch64")).toBe("ARM64");
+    expect(formatArchitecture("x86_64")).toBe("x86_64 / AMD64");
   });
 
   it("copies only non-sensitive product and runtime information", () => {

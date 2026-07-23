@@ -40,7 +40,11 @@ pub async fn scan_orphaned_application_data(
             manager.scan(&home, std::env::consts::OS, false)?;
         }
         let installed_bundle_ids = manager.installed_bundle_ids()?;
-        intelligence::scan_orphaned_application_data(&home, &installed_bundle_ids)
+        intelligence::scan_orphaned_application_data(
+            &home,
+            &installed_bundle_ids,
+            std::env::consts::OS,
+        )
     })
     .await
     .map_err(|error| CommandError::internal(error.to_string()))?

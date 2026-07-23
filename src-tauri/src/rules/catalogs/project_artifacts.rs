@@ -208,7 +208,7 @@ fn build(
             display_name: name.to_owned(),
             description: format!("Detected `{artifact}` only inside a configured root with a matching project manifest."),
             risk: RiskLevel::Careful,
-            platforms: vec![Platform::Macos, Platform::Linux],
+            platforms: vec![Platform::Macos, Platform::Linux, Platform::Windows],
             targets: vec![RuleTarget::SelectedProjectRoots],
             matcher: RuleMatcher::ProjectArtifact {
                 indicators: indicators.iter().map(|value| (*value).to_owned()).collect(),

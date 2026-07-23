@@ -16,6 +16,7 @@ use crate::{
         },
         error::{CommandError, ErrorCode},
     },
+    platform::filesystem::is_link_or_reparse_point,
     scanner::cancellation::CancellationToken,
 };
 
@@ -76,7 +77,7 @@ pub fn validate_roots_with_limit(
         }
         let link_metadata =
             fs::symlink_metadata(&path).map_err(|error| path_error(&path, error))?;
-        if link_metadata.file_type().is_symlink() || !link_metadata.is_dir() {
+        if is_link_or_reparse_point(&link_metadata) || !link_metadata.is_dir() {
             return Err(CommandError::new(
                 ErrorCode::InvalidPath,
                 "Duplicate scan roots must be real directories, not files or symbolic links.",
@@ -341,7 +342,7 @@ fn discover(
                         continue;
                     }
                 };
-                if metadata.file_type().is_symlink() {
+                if is_link_or_reparse_point(&metadata) {
                     progress.skipped_count += 1;
                     continue;
                 }
@@ -551,15 +552,24 @@ fn display_path(path: &Path, home: &Path) -> String {
 }
 
 fn is_sensitive_root(path: &Path, home: &Path, platform: &str) -> bool {
-    let sensitive_home = [".ssh", ".gnupg", ".aws", ".kube", "Library/Keychains"];
+    let sensitive_home = [
+        ".ssh",
+        ".gnupg",
+        ".aws",
+        ".kube",
+        "Library/Keychains",
+        "AppData/Roaming/Microsoft/Protect",
+        "AppData/Roaming/Microsoft/Credentials",
+        "AppData/Local/Microsoft/Credentials",
+    ];
     if sensitive_home
         .iter()
         .any(|relative| path.starts_with(home.join(relative)))
     {
         return true;
     }
-    let system_roots: &[&str] = if platform == "macos" {
-        &[
+    let system_roots: Vec<PathBuf> = match platform {
+        "macos" => [
             "/System",
             "/usr",
             "/bin",
@@ -569,12 +579,49 @@ fn is_sensitive_root(path: &Path, home: &Path, platform: &str) -> bool {
             "/private",
             "/Applications",
         ]
-    } else {
-        &[
+        .into_iter()
+        .map(PathBuf::from)
+        .collect(),
+        "linux" => [
             "/usr", "/bin", "/sbin", "/etc", "/var", "/proc", "/sys", "/dev", "/run", "/root",
         ]
+        .into_iter()
+        .map(PathBuf::from)
+        .collect(),
+        "windows" => {
+            let drive_root = home.ancestors().last().unwrap_or(home);
+            [
+                "Windows",
+                "Program Files",
+                "Program Files (x86)",
+                "ProgramData",
+                "Recovery",
+                "System Volume Information",
+                "$Recycle.Bin",
+            ]
+            .into_iter()
+            .map(|relative| drive_root.join(relative))
+            .collect()
+        }
+        _ => Vec::new(),
     };
-    system_roots.iter().any(|root| path.starts_with(root))
+    system_roots.iter().any(|root| {
+        if platform == "windows" {
+            let path_components: Vec<_> = path.components().collect();
+            let root_components: Vec<_> = root.components().collect();
+            path_components.len() >= root_components.len()
+                && path_components
+                    .iter()
+                    .zip(root_components)
+                    .all(|(left, right)| {
+                        left.as_os_str()
+                            .to_string_lossy()
+                            .eq_ignore_ascii_case(&right.as_os_str().to_string_lossy())
+                    })
+        } else {
+            path.starts_with(root)
+        }
+    })
 }
 
 fn path_error(path: &Path, error: std::io::Error) -> CommandError {

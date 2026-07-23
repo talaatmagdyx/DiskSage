@@ -1,6 +1,9 @@
 use std::{fs, path::Path, time::SystemTime};
 
-use crate::domain::error::{CommandError, ErrorCode};
+use crate::{
+    domain::error::{CommandError, ErrorCode},
+    platform::filesystem::{allocated_size, is_link_or_reparse_point},
+};
 
 use super::{cancellation::CancellationToken, exclusions::ExclusionMatcher};
 
@@ -54,7 +57,7 @@ pub fn measure_target(
                 continue;
             }
         };
-        if metadata.file_type().is_symlink() {
+        if is_link_or_reparse_point(&metadata) {
             measurement.skipped_count += 1;
             continue;
         }
@@ -63,7 +66,7 @@ pub fn measure_target(
             measurement.logical_size = measurement.logical_size.saturating_add(metadata.len());
             measurement.allocated_size = measurement
                 .allocated_size
-                .saturating_add(allocated_size(&metadata));
+                .saturating_add(allocated_size(&path, &metadata));
             if let Ok(modified) = metadata.modified() {
                 measurement.modified_at = Some(
                     measurement
@@ -131,17 +134,6 @@ fn device_id(metadata: &fs::Metadata) -> u64 {
 #[cfg(not(unix))]
 fn device_id(_metadata: &fs::Metadata) -> u64 {
     0
-}
-
-#[cfg(unix)]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt;
-    metadata.blocks().saturating_mul(512)
-}
-
-#[cfg(not(unix))]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    metadata.len()
 }
 
 #[cfg(test)]

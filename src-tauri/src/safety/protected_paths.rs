@@ -10,6 +10,7 @@ pub struct ProtectionReason {
 pub struct ProtectedPathPolicy {
     home: PathBuf,
     roots: Vec<(PathBuf, &'static str)>,
+    case_insensitive: bool,
 }
 
 impl ProtectedPathPolicy {
@@ -27,8 +28,8 @@ impl ProtectedPathPolicy {
             (home.join("Movies"), "user movies"),
             (home.join("Music"), "user music"),
         ];
-        let system_roots: &[&str] = if platform == "macos" {
-            &[
+        let system_roots: Vec<PathBuf> = match platform {
+            "macos" => [
                 "/System",
                 "/usr",
                 "/bin",
@@ -38,8 +39,10 @@ impl ProtectedPathPolicy {
                 "/Applications",
                 "/private/var/db",
             ]
-        } else {
-            &[
+            .into_iter()
+            .map(PathBuf::from)
+            .collect(),
+            "linux" => [
                 "/usr",
                 "/bin",
                 "/sbin",
@@ -52,16 +55,31 @@ impl ProtectedPathPolicy {
                 "/root",
                 "/lost+found",
             ]
+            .into_iter()
+            .map(PathBuf::from)
+            .collect(),
+            "windows" => windows_system_roots(home),
+            _ => Vec::new(),
         };
-        roots.extend(
-            system_roots
-                .iter()
-                .map(|path| (PathBuf::from(path), "system path")),
-        );
+        roots.extend(system_roots.into_iter().map(|path| (path, "system path")));
         if platform == "macos" {
             roots.push((home.join("Library/Keychains"), "macOS keychains"));
             roots.push((home.join("Library/Mail"), "mail data"));
             roots.push((home.join("Library/Messages"), "message data"));
+        }
+        if platform == "windows" {
+            roots.push((
+                home.join("AppData/Roaming/Microsoft/Protect"),
+                "Windows data-protection keys",
+            ));
+            roots.push((
+                home.join("AppData/Roaming/Microsoft/Credentials"),
+                "Windows credentials",
+            ));
+            roots.push((
+                home.join("AppData/Local/Microsoft/Credentials"),
+                "Windows credentials",
+            ));
         }
         roots.sort_by(|left, right| {
             right
@@ -73,6 +91,7 @@ impl ProtectedPathPolicy {
         Self {
             home: home.to_path_buf(),
             roots,
+            case_insensitive: platform == "windows",
         }
     }
 
@@ -81,7 +100,7 @@ impl ProtectedPathPolicy {
         self.roots.iter().find_map(|(root, reason)| {
             let root = normalize_lexically(root)?;
             let is_filesystem_root = root.parent().is_none();
-            if candidate == root || (!is_filesystem_root && candidate.starts_with(&root)) {
+            if path_matches(&candidate, &root, is_filesystem_root, self.case_insensitive) {
                 Some(ProtectionReason {
                     protected_root: root,
                     reason,
@@ -105,6 +124,46 @@ impl ProtectedPathPolicy {
             }
         })
     }
+}
+
+fn windows_system_roots(home: &Path) -> Vec<PathBuf> {
+    let drive_root = home.ancestors().last().unwrap_or(home);
+    [
+        "Windows",
+        "Program Files",
+        "Program Files (x86)",
+        "ProgramData",
+        "Recovery",
+        "System Volume Information",
+        "$Recycle.Bin",
+    ]
+    .into_iter()
+    .map(|relative| drive_root.join(relative))
+    .collect()
+}
+
+fn path_matches(
+    candidate: &Path,
+    root: &Path,
+    is_filesystem_root: bool,
+    case_insensitive: bool,
+) -> bool {
+    if !case_insensitive {
+        return candidate == root || (!is_filesystem_root && candidate.starts_with(root));
+    }
+    let candidate_components: Vec<_> = candidate.components().collect();
+    let root_components: Vec<_> = root.components().collect();
+    let root_matches = candidate_components
+        .iter()
+        .zip(&root_components)
+        .all(|(left, right)| {
+            left.as_os_str()
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&right.as_os_str().to_string_lossy())
+        });
+    root_matches
+        && (candidate_components.len() == root_components.len()
+            || (!is_filesystem_root && candidate_components.len() > root_components.len()))
 }
 
 fn normalize_lexically(path: &Path) -> Option<PathBuf> {
@@ -173,5 +232,23 @@ mod tests {
     fn relative_paths_are_not_accepted_for_policy_checks() {
         let policy = ProtectedPathPolicy::for_platform(Path::new("/home/alex"), "linux");
         assert!(policy.check(Path::new("relative/path")).is_none());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_policy_blocks_system_and_credential_paths_case_insensitively() {
+        let policy = ProtectedPathPolicy::for_platform(Path::new(r"C:\Users\alex"), "windows");
+        assert!(policy.check(Path::new(r"c:\WINDOWS\System32")).is_some());
+        assert!(policy
+            .check(Path::new(
+                r"C:\Users\alex\AppData\Roaming\Microsoft\Credentials\fixture"
+            ))
+            .is_some());
+        assert!(policy
+            .check_cleanup_candidate(
+                Path::new(r"C:\Users\alex\AppData\Local\npm-cache\_cacache"),
+                true,
+            )
+            .is_none());
     }
 }

@@ -38,6 +38,7 @@ pub fn run() {
             commands::applications::reveal_application,
             commands::applications::create_application_uninstall_plan,
             commands::applications::execute_application_uninstall_plan,
+            commands::applications::open_installed_apps_settings,
             commands::intelligence::get_permission_report,
             commands::intelligence::open_full_disk_access_settings,
             commands::intelligence::scan_orphaned_application_data,
