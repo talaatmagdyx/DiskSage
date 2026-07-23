@@ -1,3 +1,4 @@
+use std::process::Command;
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
@@ -69,4 +70,28 @@ pub async fn execute_application_uninstall_plan(
     tauri::async_runtime::spawn_blocking(move || manager.execute(&request))
         .await
         .map_err(|error| CommandError::internal(error.to_string()))?
+}
+
+#[tauri::command]
+pub fn open_installed_apps_settings() -> Result<(), CommandError> {
+    if std::env::consts::OS != "windows" {
+        return Err(crate::domain::error::CommandError::new(
+            crate::domain::error::ErrorCode::CommandUnavailable,
+            "Installed Apps settings are available only on Windows.",
+            false,
+        ));
+    }
+    let status = Command::new("explorer.exe")
+        .arg("ms-settings:appsfeatures")
+        .status()
+        .map_err(|error| CommandError::internal(error.to_string()))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(crate::domain::error::CommandError::new(
+            crate::domain::error::ErrorCode::CommandUnavailable,
+            "Windows Installed Apps settings could not be opened.",
+            true,
+        ))
+    }
 }

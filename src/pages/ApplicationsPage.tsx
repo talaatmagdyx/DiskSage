@@ -18,6 +18,7 @@ import { UninstallModeDialog } from "../components/applications/UninstallModeDia
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import type { ApplicationScope, ApplicationUninstallResult, InstalledApplication, OrphanedApplicationData } from "../ipc/types";
+import { commands } from "../ipc/commands";
 import { matchesApplicationUsage, type UsageFilter } from "../lib/applicationUsage";
 import { formatBytes } from "../lib/utils";
 import { useApplicationStore } from "../stores/applicationStore";
@@ -41,8 +42,11 @@ export function ApplicationsPage() {
   const [usage, setUsage] = useState<UsageFilter>("all");
   const [view, setView] = useState<InventoryView>("applications");
   const [uninstallChoice, setUninstallChoice] = useState<InstalledApplication | null>(null);
+  const [platform, setPlatform] = useState<string>("macos");
+  const windows = platform === "windows";
 
   useEffect(() => {
+    void commands.getAppInfo().then((info) => setPlatform(info.platform)).catch(() => undefined);
     if (store.status === "idle") void store.scan();
     if (store.permissionStatus === "idle") void store.checkPermissions();
   }, [store]);
@@ -79,7 +83,9 @@ export function ApplicationsPage() {
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-sage-300">Installed software inventory</p>
           <h1 className="text-3xl font-semibold tracking-tight">Applications</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Review installed app bundles by size and last-used date. Last-used metadata comes from macOS and may be unavailable for some apps.
+            {windows
+              ? "Review applications registered with Windows. Installed size is the publisher-provided registry estimate; removal stays with the registered Windows uninstaller."
+              : "Review installed app bundles by size and last-used date. Last-used metadata comes from macOS and may be unavailable for some apps."}
           </p>
         </div>
         <div className="flex items-end gap-5">
@@ -93,12 +99,12 @@ export function ApplicationsPage() {
 
       <div className="mt-7 inline-flex rounded-xl border border-line bg-panel p-1" aria-label="Application inventory view">
         <button className={`rounded-lg px-4 py-2 text-sm font-medium ${view === "applications" ? "bg-sage-400/15 text-sage-100" : "text-muted hover:text-ink"}`} onClick={() => setView("applications")}><AppWindow className="mr-2 inline" size={15} />Installed apps</button>
-        <button className={`rounded-lg px-4 py-2 text-sm font-medium ${view === "leftovers" ? "bg-sage-400/15 text-sage-100" : "text-muted hover:text-ink"}`} onClick={() => setView("leftovers")}><Trash2 className="mr-2 inline" size={15} />Possible leftovers</button>
+        {!windows && <button className={`rounded-lg px-4 py-2 text-sm font-medium ${view === "leftovers" ? "bg-sage-400/15 text-sage-100" : "text-muted hover:text-ink"}`} onClick={() => setView("leftovers")}><Trash2 className="mr-2 inline" size={15} />Possible leftovers</button>}
       </div>
 
       <Card className="mt-5 p-5">
         <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="flex gap-3"><div className="grid size-10 shrink-0 place-items-center rounded-xl bg-sage-400/10 text-sage-300"><LockKeyhole size={19} /></div><div><div className="flex items-center gap-2"><h2 className="font-semibold">Permission Center</h2>{store.permissionReport && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${store.permissionReport.fullDiskAccessLikely ? "bg-sage-400/10 text-sage-200" : "bg-amber-400/10 text-amber-200"}`}>{store.permissionReport.fullDiskAccessLikely ? "Access looks ready" : "Limited access"}</span>}</div><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Read-only checks explain when macOS privacy controls can hide app containers or make an uninstall partial.</p></div></div>
+          <div className="flex gap-3"><div className="grid size-10 shrink-0 place-items-center rounded-xl bg-sage-400/10 text-sage-300"><LockKeyhole size={19} /></div><div><div className="flex items-center gap-2"><h2 className="font-semibold">Permission Center</h2>{store.permissionReport && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${store.permissionReport.fullDiskAccessLikely ? "bg-sage-400/10 text-sage-200" : "bg-amber-400/10 text-amber-200"}`}>{store.permissionReport.fullDiskAccessLikely ? "Access looks ready" : "Limited access"}</span>}</div><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">{windows ? "Read-only checks show whether Windows user and application-data locations are accessible." : "Read-only checks explain when macOS privacy controls can hide app containers or make an uninstall partial."}</p></div></div>
           <div className="flex gap-2"><Button disabled={store.permissionStatus === "checking"} onClick={() => void store.checkPermissions()} variant="ghost">{store.permissionStatus === "checking" ? <LoaderCircle className="animate-spin" size={14} /> : <RefreshCw size={14} />}Check again</Button><Button onClick={() => void store.openPermissionSettings()} variant="secondary">Open settings</Button></div>
         </div>
         {store.permissionReport && <div className="mt-4 grid gap-2 border-t border-line pt-4 sm:grid-cols-2">{store.permissionReport.locations.map((location) => <div className="rounded-lg border border-line bg-white/[0.02] p-3" key={location.label}><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{location.label}</p><span className={`text-[10px] font-semibold uppercase tracking-wide ${location.access === "limited" ? "text-amber-200" : "text-sage-200"}`}>{location.access === "notPresent" ? "Not present" : location.access}</span></div><p className="mt-1 font-mono text-[11px] text-muted">{location.displayPath}</p><p className="mt-2 text-xs leading-5 text-muted">{location.guidance}</p></div>)}</div>}
@@ -160,7 +166,7 @@ export function ApplicationsPage() {
         <div className="mt-4 flex items-center justify-between gap-6 border-t border-line pt-4">
           <div className="flex items-start gap-2 text-xs text-muted">
             <Info className="mt-0.5 shrink-0" size={14} />
-            <span>Size is measured from the bundle currently on disk. System apps are protected and can never be selected for uninstall.</span>
+            <span>{windows ? "Size comes from the Windows uninstall registry and may be approximate. DiskSage never deletes Program Files; Windows runs the registered uninstaller." : "Size is measured from the bundle currently on disk. System apps are protected and can never be selected for uninstall."}</span>
           </div>
           <label className="flex shrink-0 cursor-pointer items-center gap-3 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-sm">
             <input
@@ -179,7 +185,7 @@ export function ApplicationsPage() {
       </Card>
 
       {scanning && store.applications.length === 0 ? (
-        <Card className="mt-6 grid min-h-64 place-items-center text-center"><div><LoaderCircle className="mx-auto animate-spin text-sage-300" size={34} /><h2 className="mt-4 font-semibold">Scanning installed applications</h2><p className="mt-2 text-sm text-muted">Measuring bundles and reading local macOS metadata…</p></div></Card>
+        <Card className="mt-6 grid min-h-64 place-items-center text-center"><div><LoaderCircle className="mx-auto animate-spin text-sage-300" size={34} /><h2 className="mt-4 font-semibold">Scanning installed applications</h2><p className="mt-2 text-sm text-muted">{windows ? "Reading Windows uninstall registrations and publisher size estimates…" : "Measuring bundles and reading local macOS metadata…"}</p></div></Card>
       ) : applications.length === 0 ? (
         <Card className="mt-6 grid min-h-56 place-items-center text-center"><div><AppWindow className="mx-auto text-muted" size={34} /><h2 className="mt-4 font-semibold">No matching applications</h2><p className="mt-2 text-sm text-muted">Adjust the search or scan installed applications again.</p></div></Card>
       ) : (
@@ -192,6 +198,8 @@ export function ApplicationsPage() {
               key={application.id}
               onReveal={() => void store.reveal(application.id)}
               onUninstall={() => setUninstallChoice(application)}
+              onWindowsManage={() => void commands.openInstalledAppsSettings()}
+              windows={windows}
             />
           ))}
         </div>
@@ -236,7 +244,7 @@ function LeftoversPanel({ items, onScan, status }: { items: OrphanedApplicationD
   );
 }
 
-function ApplicationRow({ application, busy, operation, onReveal, onUninstall }: { application: InstalledApplication; busy: boolean; operation: string | null; onReveal: () => void; onUninstall: () => void }) {
+function ApplicationRow({ application, busy, operation, onReveal, onUninstall, onWindowsManage, windows }: { application: InstalledApplication; busy: boolean; operation: string | null; onReveal: () => void; onUninstall: () => void; onWindowsManage: () => void; windows: boolean }) {
   const bytes = application.allocatedSize ?? application.logicalSize;
   return (
     <Card className="flex items-center gap-4 p-5 shadow-none">
@@ -249,7 +257,9 @@ function ApplicationRow({ application, busy, operation, onReveal, onUninstall }:
       </div>
       <div className="w-28 text-right"><p className="font-semibold tabular-nums">{formatBytes(bytes)}</p><p className="mt-1 text-[11px] text-muted">on disk</p></div>
       <Button aria-label={`Reveal ${application.name}`} onClick={onReveal} variant="ghost"><ExternalLink size={14} />Reveal</Button>
-      <Button aria-label={`Uninstall ${application.name}`} disabled={busy || !application.uninstallAllowed} onClick={onUninstall} variant="secondary">{operation ? <LoaderCircle className="animate-spin" size={15} /> : <PackageX size={15} />}{operation === "planning" ? "Preparing…" : operation === "uninstalling" ? "Moving…" : "Uninstall"}</Button>
+      {windows
+        ? <Button aria-label={`Manage ${application.name} in Windows Settings`} onClick={onWindowsManage} variant="secondary"><PackageX size={15} />Manage</Button>
+        : <Button aria-label={`Uninstall ${application.name}`} disabled={busy || !application.uninstallAllowed} onClick={onUninstall} variant="secondary">{operation ? <LoaderCircle className="animate-spin" size={15} /> : <PackageX size={15} />}{operation === "planning" ? "Preparing…" : operation === "uninstalling" ? "Moving…" : "Uninstall"}</Button>}
     </Card>
   );
 }

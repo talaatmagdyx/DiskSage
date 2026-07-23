@@ -294,6 +294,7 @@ export async function previewInvoke<T>(command: string, args?: Record<string, un
     return previewApplications.filter((application) => includeSystemApps || application.scope !== "system") as T;
   }
   if (command === "reveal_application") return undefined as T;
+  if (command === "open_installed_apps_settings") return undefined as T;
   if (command === "get_permission_report") {
     const report: PermissionReport = {
       checkedAt: now,

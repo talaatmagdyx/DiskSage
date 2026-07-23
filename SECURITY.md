@@ -23,4 +23,4 @@ See [docs/threat-model.md](docs/threat-model.md) and [docs/safety-policy.md](doc
 
 ## Release integrity
 
-Public macOS artifacts must be Developer ID signed, notarized, and stapled. Release CI obtains certificates and notarization credentials only from encrypted repository secrets. Secrets and signing material must never be committed. Linux releases are produced on Ubuntu 22.04 and published as AppImage and Debian packages through the tag-gated release workflow.
+Public macOS artifacts must be Developer ID signed, notarized, and stapled. Public Windows installers must be Authenticode signed and timestamped. Release CI obtains signing and notarization credentials only from encrypted repository secrets; secrets and signing material must never be committed. Linux releases are built on native Ubuntu runners and published as AppImage, Debian, and RPM packages.

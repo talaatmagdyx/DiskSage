@@ -76,9 +76,12 @@ mod tests {
 
     #[test]
     fn exclusion_applies_before_descending() {
-        let matcher = ExclusionMatcher::new(&["/tmp/cache/keep".to_owned()]).unwrap();
-        assert!(matcher.is_excluded(Path::new("/tmp/cache/keep/nested")));
-        assert!(!matcher.is_excluded(Path::new("/tmp/cache/remove")));
+        let root = tempfile::tempdir().unwrap();
+        let cache = root.path().join("cache");
+        let keep = cache.join("keep");
+        let matcher = ExclusionMatcher::new(&[keep.to_string_lossy().into_owned()]).unwrap();
+        assert!(matcher.is_excluded(&keep.join("nested")));
+        assert!(!matcher.is_excluded(&cache.join("remove")));
     }
 
     #[test]

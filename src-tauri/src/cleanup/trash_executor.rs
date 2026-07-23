@@ -19,6 +19,28 @@ fn classify_trash_error(path: &Path, details: &str) -> CommandError {
         || normalized.contains("being used")
         || normalized.contains("in use");
 
+    if cfg!(target_os = "windows") {
+        let (code, message) = if permission_denied {
+            (
+                ErrorCode::PermissionDenied,
+                "Windows denied access to this item. Close the owning application and review the file or folder permissions, then try again.",
+            )
+        } else if item_in_use {
+            (
+                ErrorCode::TrashFailed,
+                "This item is currently in use. Close the application using it, then review the cleanup again.",
+            )
+        } else {
+            (
+                ErrorCode::TrashFailed,
+                "Windows could not move this item to the Recycle Bin. Close the related application and review the item in File Explorer.",
+            )
+        };
+        return CommandError::new(code, message, true)
+            .with_path(display_path)
+            .with_details(details);
+    }
+
     let (code, message) = if permission_denied && is_private_application_data(path) {
         (
             ErrorCode::PermissionDenied,
@@ -60,6 +82,7 @@ fn is_private_application_data(path: &Path) -> bool {
 mod tests {
     use super::*;
 
+    #[cfg(not(target_os = "windows"))]
     #[test]
     fn container_permission_errors_explain_full_disk_access() {
         let error = classify_trash_error(
@@ -71,6 +94,7 @@ mod tests {
         assert!(!error.message.contains("/Users/fixture"));
     }
 
+    #[cfg(not(target_os = "windows"))]
     #[test]
     fn application_permission_errors_explain_finder_fallback() {
         let error = classify_trash_error(
@@ -89,5 +113,17 @@ mod tests {
         );
         assert_eq!(error.code, ErrorCode::TrashFailed);
         assert!(error.message.contains("Close the application"));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_permission_errors_reference_windows_controls() {
+        let error = classify_trash_error(
+            Path::new(r"C:\Users\fixture\AppData\Local\npm-cache"),
+            "Access denied",
+        );
+        assert_eq!(error.code, ErrorCode::PermissionDenied);
+        assert!(error.message.contains("Windows denied access"));
+        assert!(!error.message.contains("Full Disk Access"));
     }
 }

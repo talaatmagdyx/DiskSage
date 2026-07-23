@@ -42,6 +42,7 @@ export const commands = {
     invokeCommand<InstalledApplication[]>("scan_applications", { includeSystemApps }),
   revealApplication: (applicationId: string) =>
     invokeCommand<void>("reveal_application", { request: { applicationId } }),
+  openInstalledAppsSettings: () => invokeCommand<void>("open_installed_apps_settings"),
   getPermissionReport: () => invokeCommand<PermissionReport>("get_permission_report"),
   openFullDiskAccessSettings: () => invokeCommand<void>("open_full_disk_access_settings"),
   scanOrphanedApplicationData: () =>

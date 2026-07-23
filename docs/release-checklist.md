@@ -10,14 +10,17 @@ Every item must be completed for the exact tagged commit. A successful build alo
 - [ ] macOS Apple silicon and Intel DMGs build.
 - [ ] macOS artifacts are Developer ID signed, notarized, and stapled; `codesign --verify --deep --strict` and `spctl --assess --type execute` pass.
 - [ ] Ubuntu 22.04 x86_64 AppImage and amd64 Debian package build.
+- [ ] Windows 10/11 x86_64 NSIS and MSI installers build, are Authenticode signed and timestamped, and pass signature verification.
 - [ ] Release artifact checksums are recorded by the release owner.
 
 ## Clean-machine gate
 
 - [ ] Install each macOS architecture artifact on a clean supported machine.
 - [ ] Install AppImage and Debian artifacts on clean Ubuntu 22.04 Wayland and X11 sessions.
+- [ ] Install both Windows installer formats on clean Windows 10 and Windows 11 machines; verify WebView2 bootstrap, standard-user installation, upgrade, and uninstall.
 - [ ] Launch, onboarding, disk loading, fixture scan, cancellation, reveal, Trash cleanup, duplicate keep-one flow, history, and diagnostics export pass.
 - [ ] Permission-denied paths produce understandable errors without a crash.
+- [ ] Windows junctions/reparse points, locked files, protected roots, and Recycle Bin partial failures fail closed.
 - [ ] Memory and responsiveness remain within the documented targets on fixture datasets.
 
 ## Upgrade and uninstall gate

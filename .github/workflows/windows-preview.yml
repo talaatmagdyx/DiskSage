@@ -1,0 +1,67 @@
+name: Build Windows Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing prerelease tag to receive the Windows installers
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Windows x86_64
+    runs-on: windows-2022
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Restore Rust build cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+          key: windows-preview-x86_64
+
+      - run: npm ci
+
+      - name: Build NSIS and MSI installers
+        run: npm run tauri -- build --target x86_64-pc-windows-msvc --bundles nsis,msi
+
+      - name: Collect installers and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts
+          Copy-Item src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe artifacts/
+          Copy-Item src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi artifacts/
+          Get-FileHash artifacts/* -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content artifacts/SHA256SUMS-windows.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: artifacts/*
+          if-no-files-found: error
+
+      - name: Upload installers to prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release upload "$env:RELEASE_TAG" artifacts/* --repo "$env:GITHUB_REPOSITORY" --clobber

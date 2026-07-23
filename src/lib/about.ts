@@ -3,12 +3,13 @@ import type { AppInfo } from "../ipc/types";
 export function formatPlatform(platform: string) {
   if (platform === "macos") return "macOS";
   if (platform === "linux") return "Linux";
+  if (platform === "windows") return "Windows";
   return platform;
 }
 
 export function formatArchitecture(architecture: string) {
-  if (architecture === "aarch64") return "Apple silicon / ARM64";
-  if (architecture === "x86_64") return "Intel / x86_64";
+  if (architecture === "aarch64") return "ARM64";
+  if (architecture === "x86_64") return "x86_64 / AMD64";
   return architecture;
 }
 
@@ -17,7 +18,7 @@ export function formatSystemInformation(info: AppInfo) {
     `${info.name} ${info.version}`,
     `Build: ${info.buildProfile === "release" ? "Release" : "Development"}`,
     `Platform: ${formatPlatform(info.platform)}`,
-    `Architecture: ${info.architecture}`,
+    `Architecture: ${formatArchitecture(info.architecture)}`,
     `Runtime: ${info.runtime}`,
     "Privacy: Local by design",
   ].join("\n");

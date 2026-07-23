@@ -11,6 +11,7 @@ use crate::{
         scan::CustomScanOptions,
     },
     duplicates::scanner::validate_roots_with_limit,
+    platform::filesystem::{allocated_size, is_link_or_reparse_point},
 };
 
 use super::{cancellation::CancellationToken, exclusions::ExclusionMatcher};
@@ -122,7 +123,7 @@ pub fn analyze(
                     continue;
                 }
             };
-            if metadata.file_type().is_symlink() {
+            if is_link_or_reparse_point(&metadata) {
                 progress.skipped_count += 1;
                 continue;
             }
@@ -227,7 +228,7 @@ fn classify_file(
         display_path: display_path(path, home),
         item_type: FindingType::File,
         logical_size: metadata.len(),
-        allocated_size: Some(allocated_size(metadata)),
+        allocated_size: Some(allocated_size(path, metadata)),
         modified_at: modified,
         risk: RiskLevel::Careful,
         recommended_action: RecommendedAction::Review,
@@ -312,17 +313,6 @@ fn device_id(metadata: &fs::Metadata) -> u64 {
 #[cfg(not(unix))]
 fn device_id(_: &fs::Metadata) -> u64 {
     0
-}
-
-#[cfg(unix)]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt;
-    metadata.blocks().saturating_mul(512)
-}
-
-#[cfg(not(unix))]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    metadata.len()
 }
 
 #[cfg(test)]

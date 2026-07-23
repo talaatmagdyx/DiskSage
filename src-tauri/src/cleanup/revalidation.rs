@@ -13,6 +13,7 @@ use crate::{
         finding::{Finding, FindingType},
         rule::{RecommendedAction, RiskLevel},
     },
+    platform::filesystem::is_link_or_reparse_point,
     rules::registry::RulesRegistry,
     safety::protected_paths::ProtectedPathPolicy,
     scanner::{
@@ -182,13 +183,16 @@ fn ensure_rule_owner_not_running(
     platform: &str,
     path: &Path,
 ) -> Result<(), CommandError> {
-    if platform != "macos" {
-        return Ok(());
-    }
-    let Some((owner, markers)) = rule_owner_markers(rule_id) else {
-        return Ok(());
+    let running_owner = match platform {
+        "macos" => rule_owner_markers(rule_id)
+            .filter(|(_, markers)| owner_is_running(markers))
+            .map(|(owner, _)| owner),
+        "windows" => windows_rule_owner_names(rule_id)
+            .filter(|(_, names)| windows_owner_is_running(names))
+            .map(|(owner, _)| owner),
+        _ => None,
     };
-    if owner_is_running(markers) {
+    if let Some(owner) = running_owner {
         return Err(CommandError::new(
             ErrorCode::ApplicationRunning,
             format!(
@@ -199,6 +203,34 @@ fn ensure_rule_owner_not_running(
         .with_path(path.to_string_lossy()));
     }
     Ok(())
+}
+
+fn windows_rule_owner_names(rule_id: &str) -> Option<(&'static str, &'static [&'static str])> {
+    if rule_id.starts_with("cache.browser.chrome") {
+        Some(("Google Chrome", &["chrome.exe"]))
+    } else if rule_id.starts_with("cache.browser.edge") {
+        Some(("Microsoft Edge", &["msedge.exe"]))
+    } else if rule_id.starts_with("cache.browser.firefox") {
+        Some(("Firefox", &["firefox.exe"]))
+    } else if rule_id.contains("cursor") {
+        Some(("Cursor", &["cursor.exe"]))
+    } else if rule_id.contains("vscode") {
+        Some(("Visual Studio Code", &["code.exe"]))
+    } else if rule_id.contains("updater.codex") {
+        Some(("Codex", &["codex.exe"]))
+    } else if rule_id.contains("claude") {
+        Some(("Claude", &["claude.exe"]))
+    } else if rule_id.contains("notion") {
+        Some(("Notion", &["notion.exe"]))
+    } else if rule_id.contains("windsurf") {
+        Some(("Windsurf", &["windsurf.exe"]))
+    } else if rule_id.contains("android") {
+        Some(("Android Studio", &["studio64.exe", "studio.exe"]))
+    } else if rule_id.contains("cypress") {
+        Some(("Cypress", &["cypress.exe"]))
+    } else {
+        None
+    }
 }
 
 fn rule_owner_markers(rule_id: &str) -> Option<(&'static str, &'static [&'static str])> {
@@ -249,6 +281,25 @@ fn owner_is_running(markers: &[&str]) -> bool {
 
 #[cfg(not(target_os = "macos"))]
 fn owner_is_running(_markers: &[&str]) -> bool {
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn windows_owner_is_running(names: &[&str]) -> bool {
+    use sysinfo::{ProcessesToUpdate, System};
+
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+    system.processes().values().any(|process| {
+        let process_name = process.name().to_string_lossy();
+        names
+            .iter()
+            .any(|name| process_name.eq_ignore_ascii_case(name))
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn windows_owner_is_running(_names: &[&str]) -> bool {
     false
 }
 
@@ -324,7 +375,7 @@ fn validate_path_boundary(
 fn metadata_type(path: &Path) -> Result<FindingType, CommandError> {
     let metadata = fs::symlink_metadata(path)
         .map_err(|error| filesystem_error(path, "The cleanup item is unavailable.", error))?;
-    if metadata.file_type().is_symlink() {
+    if is_link_or_reparse_point(&metadata) {
         Ok(FindingType::Symlink)
     } else if metadata.is_file() {
         Ok(FindingType::File)
@@ -486,6 +537,9 @@ mod tests {
         assert!(process_list_contains_marker(processes, cursor_markers));
         assert!(!process_list_contains_marker(processes, chrome_markers));
         assert!(rule_owner_markers("cache.uv-v1").is_none());
+        let (_, edge_names) = windows_rule_owner_names("cache.browser.edge-v1").unwrap();
+        assert_eq!(edge_names, &["msedge.exe"]);
+        assert!(windows_rule_owner_names("cache.uv-v1").is_none());
     }
 
     #[test]

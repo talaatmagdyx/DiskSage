@@ -1,6 +1,6 @@
 # Installing DiskSage
 
-DiskSage supports macOS 10.15 or later and Ubuntu 22.04 or a compatible modern Linux distribution.
+DiskSage supports macOS 10.15 or later, Windows 10 and 11, and Ubuntu 22.04 or a compatible modern Linux distribution.
 
 ## macOS
 
@@ -10,6 +10,12 @@ Download the DMG matching your Mac:
 - `x86_64` for Intel.
 
 Open the DMG and drag DiskSage to Applications. Public release artifacts are expected to be Developer ID signed, notarized, and stapled. Development builds are unsigned and may require explicit approval in **System Settings → Privacy & Security**.
+
+## Windows
+
+Download either the x86_64 NSIS setup executable for a guided current-user installation or the MSI package for managed deployment. Preview installers may be unsigned and can trigger Microsoft Defender SmartScreen; install them only when the release digest matches the published checksum.
+
+Windows application inventory is read-only. Use **Manage** in DiskSage to open **Settings → Apps → Installed apps**, then run the publisher-registered uninstaller.
 
 ## Linux AppImage
 
@@ -59,6 +65,8 @@ sudo apt remove disksage
 ```
 
 To also remove local DiskSage data, remove the `com.disksage.desktop` directories under `${XDG_CONFIG_HOME:-~/.config}`, `${XDG_DATA_HOME:-~/.local/share}`, and `${XDG_CACHE_HOME:-~/.cache}` if present. Review every path before removal.
+
+On Windows, uninstall DiskSage from **Settings → Apps → Installed apps**. To remove local DiskSage settings and history, review the `com.disksage.desktop` directories under `%APPDATA%` and `%LOCALAPPDATA%`; remove only paths clearly owned by DiskSage.
 
 ## Building from source
 

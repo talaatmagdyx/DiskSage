@@ -22,7 +22,9 @@ macOS adds `/System`, `/Applications`, critical Unix roots, `~/Library/Keychains
 
 Linux adds critical Unix roots plus `/proc`, `/sys`, `/dev`, `/run`, `/root`, and `/lost+found`.
 
-The Rust policy performs lexical normalization before comparison so `..` cannot bypass a protected prefix. Phase 3 additionally freezes the canonical target in the plan and uses symlink metadata immediately before execution, preventing a parent-symlink redirect from silently changing the approved target.
+Windows adds the system drive root, Windows, Program Files, Program Files (x86), ProgramData, Recovery, System Volume Information, `$Recycle.Bin`, and Windows credential/data-protection locations. Comparisons are case-insensitive and NTFS reparse points are treated as redirects that scanning and cleanup must not follow.
+
+The Rust policy performs lexical normalization before comparison so `..` cannot bypass a protected prefix. Phase 3 additionally freezes the canonical target in the plan and uses symlink/reparse metadata immediately before execution, preventing a parent redirect from silently changing the approved target.
 
 ## Cleanup authorization
 

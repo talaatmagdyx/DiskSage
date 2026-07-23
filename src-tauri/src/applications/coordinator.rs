@@ -9,6 +9,12 @@ use std::{
 use chrono::{DateTime, Duration, Utc};
 use uuid::Uuid;
 
+#[cfg(target_os = "windows")]
+use winreg::{
+    enums::{KEY_READ, KEY_WOW64_32KEY, KEY_WOW64_64KEY},
+    RegKey, HKCU, HKLM,
+};
+
 use crate::{
     cleanup::trash_executor,
     domain::{
@@ -105,16 +111,20 @@ impl ApplicationManager {
         platform: &str,
         include_system_apps: bool,
     ) -> Result<Vec<InstalledApplication>, CommandError> {
-        if platform != "macos" {
-            return Err(CommandError::new(
-                ErrorCode::CommandUnavailable,
-                "Application inventory is currently available on macOS.",
-                true,
-            ));
-        }
-
-        let roots = application_roots(home, include_system_apps);
-        let entries = scan_roots(&roots, home)?;
+        let entries = match platform {
+            "macos" => {
+                let roots = application_roots(home, include_system_apps);
+                scan_roots(&roots, home)?
+            }
+            "windows" => scan_windows_applications(home, include_system_apps)?,
+            _ => {
+                return Err(CommandError::new(
+                    ErrorCode::CommandUnavailable,
+                    "Application inventory is currently available on macOS and Windows.",
+                    true,
+                ))
+            }
+        };
         let mut inventory = self
             .inventory
             .lock()
@@ -428,6 +438,170 @@ impl ApplicationManager {
         consumed.insert(request.plan_id.clone());
         Ok(stored)
     }
+}
+
+#[cfg(target_os = "windows")]
+fn scan_windows_applications(
+    home: &Path,
+    include_system_apps: bool,
+) -> Result<Vec<InventoryEntry>, CommandError> {
+    const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall";
+    let mut entries = Vec::new();
+    collect_windows_registry_apps(
+        HKCU,
+        UNINSTALL_KEY,
+        KEY_READ,
+        ApplicationScope::User,
+        home,
+        include_system_apps,
+        &mut entries,
+    );
+    for access in [KEY_READ | KEY_WOW64_64KEY, KEY_READ | KEY_WOW64_32KEY] {
+        collect_windows_registry_apps(
+            HKLM,
+            UNINSTALL_KEY,
+            access,
+            ApplicationScope::Shared,
+            home,
+            include_system_apps,
+            &mut entries,
+        );
+    }
+    let mut seen = HashSet::new();
+    entries.retain(|entry| {
+        let application = &entry.application;
+        seen.insert(format!(
+            "{}\0{}\0{}",
+            application.name.to_lowercase(),
+            application.path.to_lowercase(),
+            application.version.as_deref().unwrap_or_default()
+        ))
+    });
+    Ok(entries)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn scan_windows_applications(
+    _home: &Path,
+    _include_system_apps: bool,
+) -> Result<Vec<InventoryEntry>, CommandError> {
+    Err(CommandError::new(
+        ErrorCode::CommandUnavailable,
+        "Windows application inventory can only run on Windows.",
+        true,
+    ))
+}
+
+#[cfg(target_os = "windows")]
+#[allow(clippy::too_many_arguments)]
+fn collect_windows_registry_apps(
+    hive: &RegKey,
+    key_path: &str,
+    access: u32,
+    default_scope: ApplicationScope,
+    home: &Path,
+    include_system_apps: bool,
+    output: &mut Vec<InventoryEntry>,
+) {
+    let Ok(uninstall) = hive.open_subkey_with_flags(key_path, access) else {
+        return;
+    };
+    for key_name in uninstall.enum_keys().flatten() {
+        let Ok(key) = uninstall.open_subkey_with_flags(&key_name, access) else {
+            continue;
+        };
+        let Ok(name) = key.get_value::<String, _>("DisplayName") else {
+            continue;
+        };
+        if name.trim().is_empty() {
+            continue;
+        }
+        let system_component = key.get_value::<u32, _>("SystemComponent").unwrap_or(0) != 0;
+        if system_component && !include_system_apps {
+            continue;
+        }
+        let install_location = key
+            .get_value::<String, _>("InstallLocation")
+            .ok()
+            .and_then(|value| windows_registry_path(&value));
+        let display_icon = key
+            .get_value::<String, _>("DisplayIcon")
+            .ok()
+            .and_then(|value| windows_registry_path(&value));
+        let Some(path) = install_location
+            .filter(|path| path.exists())
+            .or_else(|| display_icon.filter(|path| path.exists()))
+        else {
+            continue;
+        };
+        let Ok(identity) = read_only_application_identity(&path) else {
+            continue;
+        };
+        let estimated_size =
+            u64::from(key.get_value::<u32, _>("EstimatedSize").unwrap_or(0)).saturating_mul(1024);
+        let version = key.get_value::<String, _>("DisplayVersion").ok();
+        let scope = if system_component {
+            ApplicationScope::System
+        } else {
+            default_scope
+        };
+        let id = blake3::hash(
+            format!("windows-registry\0{key_name}\0{name}\0{}", path.display()).as_bytes(),
+        )
+        .to_hex()
+        .to_string();
+        output.push(InventoryEntry {
+            application: InstalledApplication {
+                id,
+                name: name.trim().to_owned(),
+                bundle_id: None,
+                version,
+                path: identity.canonical_path.to_string_lossy().into_owned(),
+                display_path: display_path(&identity.canonical_path, home),
+                logical_size: estimated_size,
+                allocated_size: (estimated_size > 0).then_some(estimated_size),
+                last_used_at: None,
+                scope,
+                uninstall_allowed: false,
+                uninstall_block_reason: Some(
+                    "Read-only Windows inventory. Use Settings > Apps > Installed apps to run the publisher-registered uninstaller."
+                        .to_owned(),
+                ),
+            },
+            identity,
+        });
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_registry_path(value: &str) -> Option<PathBuf> {
+    let value = value.trim();
+    let candidate = if let Some(remainder) = value.strip_prefix('"') {
+        remainder.split('"').next().unwrap_or_default()
+    } else {
+        value.split(',').next().unwrap_or_default()
+    }
+    .trim();
+    (!candidate.is_empty()).then(|| PathBuf::from(candidate))
+}
+
+#[cfg(target_os = "windows")]
+fn read_only_application_identity(path: &Path) -> Result<FileIdentity, CommandError> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| filesystem_error(path, error))?;
+    if crate::platform::filesystem::is_link_or_reparse_point(&metadata)
+        || (!metadata.is_file() && !metadata.is_dir())
+    {
+        return Err(CommandError::new(
+            ErrorCode::InvalidPath,
+            "The installed application path is redirected or unsupported.",
+            true,
+        )
+        .with_path(path.to_string_lossy()));
+    }
+    let canonical_path = path
+        .canonicalize()
+        .map_err(|error| filesystem_error(path, error))?;
+    identity_from_metadata(canonical_path, metadata)
 }
 
 fn application_roots(home: &Path, include_system_apps: bool) -> Vec<(PathBuf, ApplicationScope)> {

@@ -20,6 +20,7 @@ pub fn catalog() -> Vec<CacheRuleSpec> {
         package_rule("cache.gradle.wrapper-v1", "Gradle wrapper downloads", "Gradle", ".gradle/wrapper/dists", ".gradle/wrapper/dists"),
         package_rule("cache.maven.wrapper-v1", "Maven wrapper downloads", "Maven", ".m2/wrapper/dists", ".m2/wrapper/dists"),
         package_rule("cache.maven.repository-v1", "Maven local repository", "Maven", ".m2/repository", ".m2/repository"),
+        package_rule("cache.nuget.packages-v1", "NuGet global packages", "NuGet", ".nuget/packages", ".nuget/packages"),
         package_rule("cache.go.modules-v1", "Go module download cache", "Go", "go/pkg/mod/cache", "go/pkg/mod/cache"),
         browser_rule(
             "cache.browser.chrome-v1",
@@ -27,6 +28,13 @@ pub fn catalog() -> Vec<CacheRuleSpec> {
             "Closing Chrome before cleanup may be required. Browser profiles, cookies, history, sessions, and credentials are excluded.",
             "Library/Caches/Google/Chrome/Default/Cache/Cache_Data",
             ".cache/google-chrome/Default/Cache/Cache_Data",
+        ),
+        browser_rule(
+            "cache.browser.edge-v1",
+            "Microsoft Edge cache",
+            "Closing Edge before cleanup may be required. Browser profiles, cookies, history, sessions, and credentials are excluded.",
+            "Library/Caches/Microsoft Edge/Default/Cache/Cache_Data",
+            ".cache/microsoft-edge/Default/Cache/Cache_Data",
         ),
         browser_rule(
             "cache.browser.firefox-v1",
